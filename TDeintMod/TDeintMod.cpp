@@ -10,6 +10,15 @@
 **
 **   Copyright (C) 2004-2007 Kevin Stone
 **
+**                    TMM v1.0 for Avisynth 2.5.x
+**
+**   TMM builds a motion-mask for TDeint, which TDeint uses via
+**   its 'emask' parameter.  TMM can use fixed or per-pixel adaptive
+**   motion thresholds, as well as any length static period.  It
+**   checks backwards, across, and forwards when looking for motion.
+**
+**   Copyright (C) 2007 Kevin Stone
+**
 **   This program is free software; you can redistribute it and/or modify
 **   it under the terms of the GNU General Public License as published by
 **   the Free Software Foundation; either version 2 of the License, or
@@ -690,6 +699,35 @@ static inline bool checkCombed(const VSFrameRef * src, VSFrameRef * cmask, int *
         return false;
 }
 
+static inline void setMaskForUpsize(VSFrameRef * msk, const int fieldt, const TDeintModData * d, const VSAPI * vsapi) {
+    for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
+        const int width = vsapi->getFrameWidth(msk, plane);
+        const int height = vsapi->getFrameHeight(msk, plane) / 2;
+        const int stride = vsapi->getStride(msk, plane) * 2;
+        uint8_t * maskwc = vsapi->getWritePtr(msk, plane);
+        uint8_t * maskwn = maskwc + stride / 2;
+        if (fieldt == 1) {
+            for (int y = 0; y < height - 1; y++) {
+                memset(maskwc, 10, width);
+                memset(maskwn, 60, width);
+                maskwc += stride;
+                maskwn += stride;
+            }
+            memset(maskwc, 10, width);
+            memset(maskwn, 10, width);
+        } else {
+            memset(maskwc, 10, width);
+            memset(maskwn, 10, width);
+            for (int y = 0; y < height - 1; y++) {
+                maskwc += stride;
+                maskwn += stride;
+                memset(maskwc, 60, width);
+                memset(maskwn, 10, width);
+            }
+        }
+    }
+}
+
 static inline void eDeint(VSFrameRef * dst, const VSFrameRef * mask, const VSFrameRef * prv, const VSFrameRef * src, const VSFrameRef * nxt, const VSFrameRef * efrm,
                           const TDeintModData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
@@ -1035,7 +1073,8 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
     const TDeintModData * d = (const TDeintModData *)*instanceData;
 
     if (activationReason == arInitial) {
-        vsapi->requestFrameFilter(n, d->mask, frameCtx);
+        if (d->mask)
+            vsapi->requestFrameFilter(n, d->mask, frameCtx);
         if (d->edeint)
             vsapi->requestFrameFilter(n, d->edeint, frameCtx);
 
@@ -1051,8 +1090,11 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
             vsapi->requestFrameFilter(n + 1, !d->useClip2 ? d->node : d->clip2, frameCtx);
     } else if (activationReason == arAllFramesReady) {
         const int nSaved = n;
-        if (d->mode == 1)
+        int fieldt = d->field;
+        if (d->mode == 1) {
+            fieldt = n & 1 ? 1 - d->order : d->order;
             n /= 2;
+        }
 
         const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
@@ -1078,7 +1120,17 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
             src = vsapi->getFrameFilter(n, d->clip2, frameCtx);
         }
         const VSFrameRef * nxt = vsapi->getFrameFilter(std::min(n + 1, d->viSaved->numFrames - 1), !d->useClip2 ? d->node : d->clip2, frameCtx);
-        const VSFrameRef * mask = vsapi->getFrameFilter(nSaved, d->mask, frameCtx);
+
+        VSFrameRef * mask;
+        if (d->mask) {
+            const VSFrameRef * msk = vsapi->getFrameFilter(nSaved, d->mask, frameCtx);
+            mask = vsapi->copyFrame(msk, core);
+            vsapi->freeFrame(msk);
+        } else {
+            mask = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core);
+            setMaskForUpsize(mask, fieldt, d, vsapi);
+        }
+
         VSFrameRef * dst = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, src, core);
 
         if (d->edeint) {
@@ -1118,9 +1170,11 @@ static void VS_CC tdeintmodFree(void *instanceData, VSCore *core, const VSAPI *v
     vsapi->freeNode(d->mask);
     vsapi->freeNode(d->clip2);
     vsapi->freeNode(d->edeint);
-    for (int i = 0; i < d->vi.format->numPlanes; i++) {
-        delete[] d->offplut[i];
-        delete[] d->offnlut[i];
+    if (d->mask) {
+        for (int i = 0; i < d->vi.format->numPlanes; i++) {
+            delete[] d->offplut[i];
+            delete[] d->offnlut[i];
+        }
     }
     delete d;
 }
@@ -1197,20 +1251,20 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         vsapi->setError(out, "TDeintMod: ttype must be 0, 1, 2, 3, 4, or 5");
         return;
     }
-    if (d.mtqL < -1 || d.mtqL > 255) {
-        vsapi->setError(out, "TDeintMod: mtql must be between -1 and 255 inclusive");
+    if (d.mtqL < -2 || d.mtqL > 255) {
+        vsapi->setError(out, "TDeintMod: mtql must be between -2 and 255 inclusive");
         return;
     }
-    if (d.mthL < -1 || d.mthL > 255) {
-        vsapi->setError(out, "TDeintMod: mthl must be between -1 and 255 inclusive");
+    if (d.mthL < -2 || d.mthL > 255) {
+        vsapi->setError(out, "TDeintMod: mthl must be between -2 and 255 inclusive");
         return;
     }
-    if (d.mtqC < -1 || d.mtqC > 255) {
-        vsapi->setError(out, "TDeintMod: mtqc must be between -1 and 255 inclusive");
+    if (d.mtqC < -2 || d.mtqC > 255) {
+        vsapi->setError(out, "TDeintMod: mtqc must be between -2 and 255 inclusive");
         return;
     }
-    if (d.mthC < -1 || d.mthC > 255) {
-        vsapi->setError(out, "TDeintMod: mthc must be between -1 and 255 inclusive");
+    if (d.mthC < -2 || d.mthC > 255) {
+        vsapi->setError(out, "TDeintMod: mthc must be between -2 and 255 inclusive");
         return;
     }
     if (d.blockx < 4 || d.blockx > 2048 || !isPowerOf2(d.blockx)) {
@@ -1241,151 +1295,159 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
     if (d.vi.format->colorFamily == cmGray)
         d.chroma = false;
 
-    VSMap * args = vsapi->createMap();
-    VSPlugin * stdPlugin = vsapi->getPluginById("com.vapoursynth.std", core);
-
-    vsapi->propSetNode(args, "clip", d.node, paReplace);
     vsapi->freeNode(d.node);
-    vsapi->propSetInt(args, "tff", 1, paReplace);
-    VSMap * ret = vsapi->invoke(stdPlugin, "SeparateFields", args);
-    if (vsapi->getError(ret)) {
-        vsapi->setError(out, vsapi->getError(ret));
-        vsapi->freeMap(args);
-        vsapi->freeMap(ret);
-        return;
-    }
-    VSNodeRef * separated = vsapi->propGetNode(ret, "clip", 0, nullptr);
-    vsapi->clearMap(args);
-    vsapi->freeMap(ret);
 
-    vsapi->propSetNode(args, "clip", separated, paReplace);
-    vsapi->propSetInt(args, "cycle", 2, paReplace);
-    vsapi->propSetInt(args, "offsets", 0, paReplace);
-    ret = vsapi->invoke(stdPlugin, "SelectEvery", args);
-    if (vsapi->getError(ret)) {
-        vsapi->setError(out, vsapi->getError(ret));
-        vsapi->freeMap(args);
-        vsapi->freeMap(ret);
-        vsapi->freeNode(separated);
-        return;
-    }
-    d.node = vsapi->propGetNode(ret, "clip", 0, nullptr);
-    d.vi = *vsapi->getVideoInfo(d.node);
-    vsapi->clearMap(args);
-    vsapi->freeMap(ret);
+    d.mask = nullptr;
+    if (d.mtqL > -2 || d.mthL > -2 || d.mtqC > -2 || d.mthC > -2) {
+        d.node = vsapi->propGetNode(in, "clip", 0, nullptr);
+        d.vi = *vsapi->getVideoInfo(d.node);
 
-    for (int i = 0; i < d.vi.format->numPlanes; i++) {
-        const int width = d.vi.width >> (i ? d.vi.format->subSamplingW : 0);
-        d.offplut[i] = new int[width];
-        d.offnlut[i] = new int[width];
-        for (int j = 0; j < width; j++) {
-            if (j == 0)
-                d.offplut[i][j] = -1;
-            else
-                d.offplut[i][j] = 1;
-            if (j == width - 1)
-                d.offnlut[i][j] = -1;
-            else
-                d.offnlut[i][j] = 1;
+        VSMap * args = vsapi->createMap();
+        VSPlugin * stdPlugin = vsapi->getPluginById("com.vapoursynth.std", core);
+
+        vsapi->propSetNode(args, "clip", d.node, paReplace);
+        vsapi->freeNode(d.node);
+        vsapi->propSetInt(args, "tff", 1, paReplace);
+        VSMap * ret = vsapi->invoke(stdPlugin, "SeparateFields", args);
+        if (vsapi->getError(ret)) {
+            vsapi->setError(out, vsapi->getError(ret));
+            vsapi->freeMap(args);
+            vsapi->freeMap(ret);
+            return;
         }
-    }
+        VSNodeRef * separated = vsapi->propGetNode(ret, "clip", 0, nullptr);
+        vsapi->clearMap(args);
+        vsapi->freeMap(ret);
 
-    for (int i = 0; i < 256; i++)
-        d.mlut[i] = std::min(std::max(i + d.nt, d.minthresh), d.maxthresh);
+        vsapi->propSetNode(args, "clip", separated, paReplace);
+        vsapi->propSetInt(args, "cycle", 2, paReplace);
+        vsapi->propSetInt(args, "offsets", 0, paReplace);
+        ret = vsapi->invoke(stdPlugin, "SelectEvery", args);
+        if (vsapi->getError(ret)) {
+            vsapi->setError(out, vsapi->getError(ret));
+            vsapi->freeMap(args);
+            vsapi->freeMap(ret);
+            vsapi->freeNode(separated);
+            return;
+        }
+        d.node = vsapi->propGetNode(ret, "clip", 0, nullptr);
+        d.vi = *vsapi->getVideoInfo(d.node);
+        vsapi->clearMap(args);
+        vsapi->freeMap(ret);
 
-    TDeintModData * data = new TDeintModData(d);
+        for (int i = 0; i < d.vi.format->numPlanes; i++) {
+            const int width = d.vi.width >> (i ? d.vi.format->subSamplingW : 0);
+            d.offplut[i] = new int[width];
+            d.offnlut[i] = new int[width];
+            for (int j = 0; j < width; j++) {
+                if (j == 0)
+                    d.offplut[i][j] = -1;
+                else
+                    d.offplut[i][j] = 1;
+                if (j == width - 1)
+                    d.offnlut[i][j] = -1;
+                else
+                    d.offnlut[i][j] = 1;
+            }
+        }
 
-    vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodCreateMMGetFrame, tdeintmodCreateMMFree, fmParallel, 0, data, core);
-    VSNodeRef * temp = vsapi->propGetNode(out, "clip", 0, nullptr);
-    vsapi->clearMap(out);
-    if (!invokeCache(&temp, out, stdPlugin, vsapi))
-        return;
+        for (int i = 0; i < 256; i++)
+            d.mlut[i] = std::min(std::max(i + d.nt, d.minthresh), d.maxthresh);
 
-    vsapi->propSetNode(args, "clip", separated, paReplace);
-    vsapi->freeNode(separated);
-    vsapi->propSetInt(args, "cycle", 2, paReplace);
-    vsapi->propSetInt(args, "offsets", 1, paReplace);
-    ret = vsapi->invoke(stdPlugin, "SelectEvery", args);
-    if (vsapi->getError(ret)) {
-        vsapi->setError(out, vsapi->getError(ret));
+        TDeintModData * data = new TDeintModData(d);
+
+        vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodCreateMMGetFrame, tdeintmodCreateMMFree, fmParallel, 0, data, core);
+        VSNodeRef * temp = vsapi->propGetNode(out, "clip", 0, nullptr);
+        vsapi->clearMap(out);
+        if (!invokeCache(&temp, out, stdPlugin, vsapi))
+            return;
+
+        vsapi->propSetNode(args, "clip", separated, paReplace);
+        vsapi->freeNode(separated);
+        vsapi->propSetInt(args, "cycle", 2, paReplace);
+        vsapi->propSetInt(args, "offsets", 1, paReplace);
+        ret = vsapi->invoke(stdPlugin, "SelectEvery", args);
+        if (vsapi->getError(ret)) {
+            vsapi->setError(out, vsapi->getError(ret));
+            vsapi->freeMap(args);
+            vsapi->freeMap(ret);
+            vsapi->freeNode(temp);
+            return;
+        }
+        d.node = vsapi->propGetNode(ret, "clip", 0, nullptr);
+        d.vi = *vsapi->getVideoInfo(d.node);
         vsapi->freeMap(args);
         vsapi->freeMap(ret);
-        vsapi->freeNode(temp);
-        return;
-    }
-    d.node = vsapi->propGetNode(ret, "clip", 0, nullptr);
-    d.vi = *vsapi->getVideoInfo(d.node);
-    vsapi->freeMap(args);
-    vsapi->freeMap(ret);
 
-    data = new TDeintModData(d);
+        data = new TDeintModData(d);
 
-    vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodCreateMMGetFrame, tdeintmodCreateMMFree, fmParallel, 0, data, core);
-    d.node2 = vsapi->propGetNode(out, "clip", 0, nullptr);
-    vsapi->clearMap(out);
-    if (!invokeCache(&d.node2, out, stdPlugin, vsapi))
-        return;
+        vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodCreateMMGetFrame, tdeintmodCreateMMFree, fmParallel, 0, data, core);
+        d.node2 = vsapi->propGetNode(out, "clip", 0, nullptr);
+        vsapi->clearMap(out);
+        if (!invokeCache(&d.node2, out, stdPlugin, vsapi))
+            return;
 
-    d.node = temp;
-    d.vi = *vsapi->getVideoInfo(d.node);
-    d.viSaved = vsapi->getVideoInfo(d.node);
+        d.node = temp;
+        d.vi = *vsapi->getVideoInfo(d.node);
+        d.viSaved = vsapi->getVideoInfo(d.node);
 
-    d.vi.height *= 2;
-    if (d.mode == 1) {
-        d.vi.numFrames *= 2;
-        d.vi.fpsNum *= 2;
-    }
+        d.vi.height *= 2;
+        if (d.mode == 1) {
+            d.vi.numFrames *= 2;
+            d.vi.fpsNum *= 2;
+        }
 
-    for (int i = 0; i < d.length; i++)
-        d.gvlut[i] = i == 0 ? 1 : (i == d.length - 1 ? 4 : 2);
+        for (int i = 0; i < d.length; i++)
+            d.gvlut[i] = i == 0 ? 1 : (i == d.length - 1 ? 4 : 2);
 
-    if (d.mtype == 0) {
-        d.vlut = {
-            0, 1, 2, 2, 3, 0, 2, 2,
-            1, 1, 2, 2, 0, 1, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            3, 0, 2, 2, 3, 3, 2, 2,
-            0, 1, 2, 2, 3, 1, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2
+        if (d.mtype == 0) {
+            d.vlut = {
+                0, 1, 2, 2, 3, 0, 2, 2,
+                1, 1, 2, 2, 0, 1, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                3, 0, 2, 2, 3, 3, 2, 2,
+                0, 1, 2, 2, 3, 1, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2
+            };
+        } else if (d.mtype == 1) {
+            d.vlut = {
+                0, 0, 2, 2, 0, 0, 2, 2,
+                0, 1, 2, 2, 0, 1, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                0, 0, 2, 2, 3, 3, 2, 2,
+                0, 1, 2, 2, 3, 1, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2,
+                2, 2, 2, 2, 2, 2, 2, 2
+            };
+        } else {
+            d.vlut = {
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 0, 1, 0, 1, 0, 1,
+                0, 0, 2, 2, 0, 0, 2, 2,
+                0, 1, 2, 2, 0, 1, 2, 2,
+                0, 0, 0, 0, 3, 3, 3, 3,
+                0, 1, 0, 1, 3, 1, 3, 1,
+                0, 0, 2, 2, 3, 3, 2, 2,
+                0, 1, 2, 2, 3, 1, 2, 2
+            };
+        }
+
+        d.tmmlut16 = {
+            60, 20, 50, 10, 60, 10, 40, 30,
+            60, 10, 40, 30, 60, 20, 50, 10
         };
-    } else if (d.mtype == 1) {
-        d.vlut = {
-            0, 0, 2, 2, 0, 0, 2, 2,
-            0, 1, 2, 2, 0, 1, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            0, 0, 2, 2, 3, 3, 2, 2,
-            0, 1, 2, 2, 3, 1, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2
-        };
-    } else {
-        d.vlut = {
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 1, 0, 1, 0, 1, 0, 1,
-            0, 0, 2, 2, 0, 0, 2, 2,
-            0, 1, 2, 2, 0, 1, 2, 2,
-            0, 0, 0, 0, 3, 3, 3, 3,
-            0, 1, 0, 1, 3, 1, 3, 1,
-            0, 0, 2, 2, 3, 3, 2, 2,
-            0, 1, 2, 2, 3, 1, 2, 2
-        };
+
+        data = new TDeintModData(d);
+
+        vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodBuildMMGetFrame, tdeintmodBuildMMFree, fmParallel, 0, data, core);
+        d.mask = vsapi->propGetNode(out, "clip", 0, nullptr);
+        vsapi->clearMap(out);
+        if (!invokeCache(&d.mask, out, stdPlugin, vsapi))
+            return;
     }
-
-    d.tmmlut16 = {
-        60, 20, 50, 10, 60, 10, 40, 30,
-        60, 10, 40, 30, 60, 20, 50, 10
-    };
-
-    data = new TDeintModData(d);
-
-    vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodBuildMMGetFrame, tdeintmodBuildMMFree, fmParallel, 0, data, core);
-    d.mask = vsapi->propGetNode(out, "clip", 0, nullptr);
-    vsapi->clearMap(out);
-    if (!invokeCache(&d.mask, out, stdPlugin, vsapi))
-        return;
 
     d.node = vsapi->propGetNode(in, "clip", 0, nullptr);
     d.clip2 = vsapi->propGetNode(in, "clip2", 0, &err);
@@ -1448,7 +1510,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         d.vi.fpsNum *= 2;
     }
 
-    data = new TDeintModData(d);
+    TDeintModData * data = new TDeintModData(d);
 
     vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodGetFrame, tdeintmodFree, fmParallel, 0, data, core);
 }
