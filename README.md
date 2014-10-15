@@ -3,7 +3,7 @@ Description
 
 TDeintMod is a combination of TDeint and TMM, which are both ported from tritical's AviSynth plugin http://bengal.missouri.edu/~kes25c/.
 
-Only a few functionality of TDeint is kept in TDeintMod, either because some use inline asm and there is no equivalent C code in the source, or some are very rarely used by people nowadays. For example, the biggest change is that TDeint's internal building of motion mask is entirely dropped, and be replaced with TMM's motion mask. The second is that only cubic interpolation is kept as the only one internal interpolation method, all the others (ELA interpolation, kernel interpolation and blend interpolation) are dropped. Cubic interpolation is kept only for testing purpose, and people should really specify an externally interpolated clip via `edeint` argument for practical usage.
+Only a few functionality of TDeint is kept in TDeintMod, either because some use inline asm and there is no equivalent C code in the source, or some are very rarely used by people nowadays. For example, the biggest change is that TDeint's internal building of motion mask is entirely dropped, and be replaced with TMM's motion mask. The second is that only cubic interpolation is kept as the only one internal interpolation method, all the others (ELA interpolation, kernel interpolation and blend interpolation) are dropped. Cubic interpolation is kept only for testing purpose, and people should really specify an externally interpolated clip via `edeint` argument for practical use.
 
 
 Usage
