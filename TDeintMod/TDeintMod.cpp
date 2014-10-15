@@ -27,8 +27,8 @@
 
 #include <algorithm>
 #include <vector>
-#include "VapourSynth.h"
-#include "VSHelper.h"
+#include <vapoursynth/VapourSynth.h>
+#include <vapoursynth/VSHelper.h>
 
 struct TDeintModData {
     VSNodeRef * node, * node2, * mask, * clip2, * edeint;
