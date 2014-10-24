@@ -9,7 +9,7 @@ Only a few functionality of TDeint is kept in TDeintMod, either because some use
 Usage
 =====
 
-    tdm.TDeintMod(clip clip, int order[, int field=order, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, clip clip2, bint full=True, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, clip edeint, int metric=0])
+    tdm.TDeintMod(clip clip, int order[, int field=order, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, bint show=False, clip clip2, bint full=True, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, clip edeint, int metric=0])
 
 - order: Sets the field order of the video.<br />
 <br />
@@ -52,6 +52,8 @@ compensated means adjusted for distance differences due to field vs frames and c
 - nt/minthresh/maxthresh: nt sets the noise threshold, which will be added to the value of each per-pixel threshold when determining if a pixel is stationary or not. After the addition of 'nt', any threshold less than minthresh will be increased to minthresh and any threshold greater than maxthresh will be decreased to maxthresh.
 
 - cstr: Sets the number of required neighbor pixels (3x3 neighborhood) in the quarter pel mask, of a pixel marked as moving in the quarter pel mask, but stationary in the half pel mask, marked as stationary for the pixel to be marked as stationary in the combined mask.
+
+- show: Displays the motion mask instead of the deinterlaced frame.
 
 - clip2: If using TDeintMod as a post-processor after `vivtc.VFM`, incorrect deinterlacing can occur due to the fact that `vivtc.VFM` changes the order of the fields in the original stream (it is a field matcher after all). This can cause problems in some cases since TDeintMod really needs to have the original stream. To work around this, you can specify a second clip "clip2" for TDeintMod to do the actual deinterlacing from.
 
