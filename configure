@@ -20,6 +20,7 @@ options:
   --target-os=OS           build programs to run on OS [auto]
   --cross-prefix=PREFIX    use PREFIX for compilation tools
   --sysroot=SYSROOT        root of cross-build tree
+  --disable-simd           disable all x86 SIMD code
   --enable-debug           compile with debug symbols and never strip
 
   --extra-cxxflags=XCXXFLAGS  add XCXXFLAGS to CXXFLAGS
@@ -82,6 +83,7 @@ SYSROOT=""
 CXX="clang++"
 LD="clang++"
 STRIP="strip"
+SIMD="-DVS_TARGET_CPU_X86"
 
 test -n "$(which $CXX 2> /dev/null)" || CXX="g++"
 test -n "$(which $LD 2> /dev/null)" || LD="g++"
@@ -132,6 +134,9 @@ for opt; do
             CXXFLAGS="$CXXFLAGS --sysroot=$optarg"
             LDFLAGS="$LDFLAGS --sysroot=$optarg"
             ;;
+        --disable-simd)
+            SIMD=""
+            ;;
         --gcc)
             CXX="g++"
             LD="g++"
@@ -149,7 +154,7 @@ for opt; do
     esac
 done
 
-CXXFLAGS="$CXXFLAGS $XCXXFLAGS $TARGET"
+CXXFLAGS="$CXXFLAGS $SIMD $XCXXFLAGS $TARGET"
 LDFLAGS="$LDFLAGS $XLDFLAGS"
 
 CXX="${CROSS}${CXX}"
