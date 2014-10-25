@@ -112,36 +112,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((atmax + 2) >> 2).store_a(dstp0 + x);
                     ((atmax + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    int min1 = 256, max1 = -1;
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcp_[x - offp] < min1)
-                        min1 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max1)
-                        max1 = srcp_[x - offp];
-                    if (srcp_[x + offn] < min1)
-                        min1 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max1)
-                        max1 = srcp_[x + offn];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    const int atv = std::max((std::abs(srcp_[x] - min0) + vss) >> vs, (std::abs(srcp_[x] - max0) + vss) >> vs);
-                    const int ath = std::max((std::abs(srcp_[x] - min1) + hs) >> hs, (std::abs(srcp_[x] - max1) + hs) >> hs);
-                    const int atmax = std::max(atv, ath);
-                    dstp0[x] = (atmax + 2) >> 2;
-                    dstp1[x] = (atmax + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
@@ -210,52 +183,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((atmax + 2) >> 2).store_a(dstp0 + x);
                     ((atmax + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    int min1 = 256, max1 = -1;
-                    if (srcpp_[x - offp] < min0)
-                        min0 = srcpp_[x - offp];
-                    if (srcpp_[x - offp] > max0)
-                        max0 = srcpp_[x - offp];
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcpp_[x + offn] < min0)
-                        min0 = srcpp_[x + offn];
-                    if (srcpp_[x + offn] > max0)
-                        max0 = srcpp_[x + offn];
-                    if (srcp_[x - offp] < min1)
-                        min1 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max1)
-                        max1 = srcp_[x - offp];
-                    if (srcp_[x + offn] < min1)
-                        min1 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max1)
-                        max1 = srcp_[x + offn];
-                    if (srcpn_[x - offp] < min0)
-                        min0 = srcpn_[x - offp];
-                    if (srcpn_[x - offp] > max0)
-                        max0 = srcpn_[x - offp];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    if (srcpn_[x + offn] < min0)
-                        min0 = srcpn_[x + offn];
-                    if (srcpn_[x + offn] > max0)
-                        max0 = srcpn_[x + offn];
-                    const int atv = std::max((std::abs(srcp_[x] - min0) + vss) >> vs, (std::abs(srcp_[x] - max0) + vss) >> vs);
-                    const int ath = std::max((std::abs(srcp_[x] - min1) + hs) >> hs, (std::abs(srcp_[x] - max1) + hs) >> hs);
-                    const int atmax = std::max(atv, ath);
-                    dstp0[x] = (atmax + 2) >> 2;
-                    dstp1[x] = (atmax + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
@@ -325,33 +255,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcp_[x - offp] < min0)
-                        min0 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max0)
-                        max0 = srcp_[x - offp];
-                    if (srcp_[x + offn] < min0)
-                        min0 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max0)
-                        max0 = srcp_[x + offn];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    const int at = std::max(std::abs(srcp_[x] - min0), std::abs(srcp_[x] - max0));
-                    dstp0[x] = (at + 2) >> 2;
-                    dstp1[x] = (at + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
@@ -414,49 +320,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    if (srcpp_[x - offp] < min0)
-                        min0 = srcpp_[x - offp];
-                    if (srcpp_[x - offp] > max0)
-                        max0 = srcpp_[x - offp];
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcpp_[x + offn] < min0)
-                        min0 = srcpp_[x + offn];
-                    if (srcpp_[x + offn] > max0)
-                        max0 = srcpp_[x + offn];
-                    if (srcp_[x - offp] < min0)
-                        min0 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max0)
-                        max0 = srcp_[x - offp];
-                    if (srcp_[x + offn] < min0)
-                        min0 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max0)
-                        max0 = srcp_[x + offn];
-                    if (srcpn_[x - offp] < min0)
-                        min0 = srcpn_[x - offp];
-                    if (srcpn_[x - offp] > max0)
-                        max0 = srcpn_[x - offp];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    if (srcpn_[x + offn] < min0)
-                        min0 = srcpn_[x + offn];
-                    if (srcpn_[x + offn] > max0)
-                        max0 = srcpn_[x + offn];
-                    const int at = std::max(std::abs(srcp_[x] - min0), std::abs(srcp_[x] - max0));
-                    dstp0[x] = (at + 2) >> 2;
-                    dstp1[x] = (at + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
@@ -525,37 +391,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcp_[x - offp] < min0)
-                        min0 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max0)
-                        max0 = srcp_[x - offp];
-                    if (srcp_[x] < min0)
-                        min0 = srcp_[x];
-                    if (srcp_[x] > max0)
-                        max0 = srcp_[x];
-                    if (srcp_[x + offn] < min0)
-                        min0 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max0)
-                        max0 = srcp_[x + offn];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    const int at = max0 - min0;
-                    dstp0[x] = (at + 2) >> 2;
-                    dstp1[x] = (at + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
@@ -624,53 +462,9 @@ static inline void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TD
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                {
-                    const int x = 0;
-                    const int offp = offpt[x];
-                    const int offn = offnt[x];
-                    int min0 = 256, max0 = -1;
-                    if (srcpp_[x - offp] < min0)
-                        min0 = srcpp_[x - offp];
-                    if (srcpp_[x - offp] > max0)
-                        max0 = srcpp_[x - offp];
-                    if (srcpp_[x] < min0)
-                        min0 = srcpp_[x];
-                    if (srcpp_[x] > max0)
-                        max0 = srcpp_[x];
-                    if (srcpp_[x + offn] < min0)
-                        min0 = srcpp_[x + offn];
-                    if (srcpp_[x + offn] > max0)
-                        max0 = srcpp_[x + offn];
-                    if (srcp_[x - offp] < min0)
-                        min0 = srcp_[x - offp];
-                    if (srcp_[x - offp] > max0)
-                        max0 = srcp_[x - offp];
-                    if (srcp_[x] < min0)
-                        min0 = srcp_[x];
-                    if (srcp_[x] > max0)
-                        max0 = srcp_[x];
-                    if (srcp_[x + offn] < min0)
-                        min0 = srcp_[x + offn];
-                    if (srcp_[x + offn] > max0)
-                        max0 = srcp_[x + offn];
-                    if (srcpn_[x - offp] < min0)
-                        min0 = srcpn_[x - offp];
-                    if (srcpn_[x - offp] > max0)
-                        max0 = srcpn_[x - offp];
-                    if (srcpn_[x] < min0)
-                        min0 = srcpn_[x];
-                    if (srcpn_[x] > max0)
-                        max0 = srcpn_[x];
-                    if (srcpn_[x + offn] < min0)
-                        min0 = srcpn_[x + offn];
-                    if (srcpn_[x + offn] > max0)
-                        max0 = srcpn_[x + offn];
-                    const int at = max0 - min0;
-                    dstp0[x] = (at + 2) >> 2;
-                    dstp1[x] = (at + 1) >> 1;
-                }
-                {
-                    const int x = width - 1;
+                const int offx[] = { 0, width - 1 };
+                for (int i = 0; i < 2; i++) {
+                    const int x = offx[i];
                     const int offp = offpt[x];
                     const int offn = offnt[x];
                     int min0 = 256, max0 = -1;
