@@ -1116,12 +1116,9 @@ static inline bool checkCombed(const VSFrameRef * src, VSFrameRef * cmask, int *
                     (cmkpV[x] == 0xFF && (cmkpV[x - 1] == 0xFF || cmkpV[x + 1] == 0xFF ||
                      cmkppV[x - 1] == 0xFF || cmkppV[x] == 0xFF || cmkppV[x + 1] == 0xFF ||
                      cmkpnV[x - 1] == 0xFF || cmkpnV[x] == 0xFF || cmkpnV[x + 1] == 0xFF))) {
-                    ((uint16_t *)cmkp)[x] = 0xFFFF;
-                    ((uint16_t *)cmkpn)[x] = 0xFFFF;
-                    if (y & 1)
-                        ((uint16_t *)cmkpp)[x] = 0xFFFF;
-                    else
-                        ((uint16_t *)cmkpnn)[x] = 0xFFFF;
+                    reinterpret_cast<uint16_t *>(cmkp)[x] = 0xFFFF;
+                    reinterpret_cast<uint16_t *>(cmkpn)[x] = 0xFFFF;
+                    reinterpret_cast<uint16_t *>(y & 1 ? cmkpp : cmkpnn)[x] = 0xFFFF;
                 }
             }
         }
@@ -1231,10 +1228,7 @@ static inline bool checkCombed(const VSFrameRef * src, VSFrameRef * cmask, int *
         if (cArray[x] > MIC)
             MIC = cArray[x];
     }
-    if (MIC > d->MI)
-        return true;
-    else
-        return false;
+    return MIC > d->MI;
 }
 
 static inline void setMaskForUpsize(VSFrameRef * msk, const int fieldt, const TDeintModData * d, const VSAPI * vsapi) {
@@ -1378,12 +1372,12 @@ static bool invokeCache(VSNodeRef ** node, VSMap * out, VSPlugin * stdPlugin, co
 }
 
 static void VS_CC tdeintmodInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    TDeintModData * d = (TDeintModData *)*instanceData;
+    TDeintModData * d = static_cast<TDeintModData *>(*instanceData);
     vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
 static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    const TDeintModData * d = (const TDeintModData *)*instanceData;
+    const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
 
     if (activationReason == arInitial) {
         for (int i = 0; i < 3; i++) {
@@ -1422,7 +1416,7 @@ static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationRe
 }
 
 static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    const TDeintModData * d = (const TDeintModData *)*instanceData;
+    const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
 
     if (activationReason == arInitial) {
         int fieldt = d->field;
@@ -1608,7 +1602,7 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
 }
 
 static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    const TDeintModData * d = (const TDeintModData *)*instanceData;
+    const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
 
     if (activationReason == arInitial) {
         if (d->mask)
@@ -1694,20 +1688,20 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
 }
 
 static void VS_CC tdeintmodCreateMMFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-    TDeintModData * d = (TDeintModData *)instanceData;
+    TDeintModData * d = static_cast<TDeintModData *>(instanceData);
     vsapi->freeNode(d->node);
     delete d;
 }
 
 static void VS_CC tdeintmodBuildMMFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-    TDeintModData * d = (TDeintModData *)instanceData;
+    TDeintModData * d = static_cast<TDeintModData *>(instanceData);
     vsapi->freeNode(d->node);
     vsapi->freeNode(d->node2);
     delete d;
 }
 
 static void VS_CC tdeintmodFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-    TDeintModData * d = (TDeintModData *)instanceData;
+    TDeintModData * d = static_cast<TDeintModData *>(instanceData);
     vsapi->freeNode(d->node);
     vsapi->freeNode(d->mask);
     vsapi->freeNode(d->clip2);
@@ -2049,8 +2043,8 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
 
     d.xhalf = d.blockx / 2;
     d.yhalf = d.blocky / 2;
-    d.xshift = (int)std::log2(d.blockx);
-    d.yshift = (int)std::log2(d.blocky);
+    d.xshift = static_cast<int>(std::log2(d.blockx));
+    d.yshift = static_cast<int>(std::log2(d.blocky));
     d.cthresh6 = d.cthresh * 6;
     d.cthreshsq = d.cthresh * d.cthresh;
 
