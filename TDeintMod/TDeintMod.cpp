@@ -838,10 +838,10 @@ static void motionMask(const VSFrameRef * src1, const VSFrameRef * msk1, const V
                 const Vec16uc mskp2h = Vec16uc().load_a(mskp2h_ + x);
                 const Vec16uc diff = abs_dif(srcp1, srcp2);
                 const Vec16uc threshq = min(mskp1q, mskp2q);
-                const Vec16uc lookupq = lookup<256>(threshq, d->mlut);
+                const Vec16uc lookupq = Vec16uc(lookup<256>(threshq, d->mlut));
                 select(diff <= lookupq, two_five_five, zero).store_a(dstpq + x);
                 const Vec16uc threshh = min(mskp1h, mskp2h);
-                const Vec16uc lookuph = lookup<256>(threshh, d->mlut);
+                const Vec16uc lookuph = Vec16uc(lookup<256>(threshh, d->mlut));
                 select(diff <= lookuph, two_five_five, zero).store_a(dstph + x);
             }
             srcp1_ += stride;
