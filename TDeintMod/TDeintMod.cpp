@@ -50,7 +50,7 @@ struct TDeintModData {
     bool show, full, chroma;
     int8_t * offplut[3], * offnlut[3], gvlut[60];
     uint8_t mlut[256];
-    std::vector<int> vlut, tmmlut16;
+    std::vector<uint8_t> vlut, tmmlut16;
     int xhalf, yhalf, xshift, yshift, cthresh6, cthreshsq;
     bool useClip2;
 };
@@ -871,17 +871,11 @@ static void motionMask(const VSFrameRef * src1, const VSFrameRef * msk1, const V
         uint8_t * dstph = dstpq + stride * height;
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                const int diff = std::abs(srcp1[x] - srcp2[x]);
-                const int threshq = std::min(mskp1q[x], mskp2q[x]);
-                if (diff <= d->mlut[threshq])
-                    dstpq[x] = 255;
-                else
-                    dstpq[x] = 0;
-                const int threshh = std::min(mskp1h[x], mskp2h[x]);
-                if (diff <= d->mlut[threshh])
-                    dstph[x] = 255;
-                else
-                    dstph[x] = 0;
+                const uint8_t diff = std::abs(srcp1[x] - srcp2[x]);
+                const uint8_t threshq = std::min(mskp1q[x], mskp2q[x]);
+                dstpq[x] = diff <= d->mlut[threshq] ? 255 : 0;
+                const uint8_t threshh = std::min(mskp1h[x], mskp2h[x]);
+                dstph[x] = diff <= d->mlut[threshh] ? 255 : 0;
             }
             srcp1 += stride;
             srcp2 += stride;
@@ -1337,7 +1331,7 @@ static inline void cubicDeint(VSFrameRef * dst, const VSFrameRef * mask, const V
                         dstp[x] = (srcpn[x] + srcpp[x] + 1) >> 1;
                     } else {
                         const int temp = (19 * (srcpp[x] + srcpn[x]) - 3 * (srcppp[x] + srcpnn[x]) + 16) >> 5;
-                        dstp[x] = std::max(std::min(temp, 255), 0);
+                        dstp[x] = std::min(std::max(temp, 0), 255);
                     }
                 }
             }
@@ -1461,8 +1455,8 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
             n /= 2;
         }
 
-        const int * tmmlut = d->tmmlut16.data() + d->order * 8 + fieldt * 4;
-        int tmmlutf[64];
+        const uint8_t * tmmlut = d->tmmlut16.data() + d->order * 8 + fieldt * 4;
+        uint8_t tmmlutf[64];
         for (int i = 0; i < 64; i++)
             tmmlutf[i] = tmmlut[d->vlut[i]];
 
@@ -1572,7 +1566,7 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
                         }
                         val |= d->gvlut[i];
                     j2:
-                        if (d->vlut[val] == 2)
+                        if (d->vlut[val] == 2u)
                             break;
                     }
                     dstp[x] = tmmlutf[val];
@@ -1837,7 +1831,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         return;
     }
 
-    if (d.vi.format->colorFamily == cmGray)
+    if (d.vi.format->numPlanes == 1)
         d.chroma = false;
 
     vsapi->freeNode(d.node);
@@ -1847,9 +1841,9 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         VSMap * args = vsapi->createMap();
         VSPlugin * stdPlugin = vsapi->getPluginById("com.vapoursynth.std", core);
 
-        d.node = vsapi->propGetNode(in, "clip", 0, nullptr);
-        vsapi->propSetNode(args, "clip", d.node, paReplace);
-        vsapi->freeNode(d.node);
+        VSNodeRef * node = vsapi->propGetNode(in, "clip", 0, nullptr);
+        vsapi->propSetNode(args, "clip", node, paReplace);
+        vsapi->freeNode(node);
         vsapi->propSetInt(args, "tff", 1, paReplace);
         VSMap * ret = vsapi->invoke(stdPlugin, "SeparateFields", args);
         if (vsapi->getError(ret)) {
@@ -1883,14 +1877,8 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
             d.offplut[i] = new int8_t[width];
             d.offnlut[i] = new int8_t[width];
             for (int j = 0; j < width; j++) {
-                if (j == 0)
-                    d.offplut[i][j] = -1;
-                else
-                    d.offplut[i][j] = 1;
-                if (j == width - 1)
-                    d.offnlut[i][j] = -1;
-                else
-                    d.offnlut[i][j] = 1;
+                d.offplut[i][j] = j == 0 ? -1 : 1;
+                d.offnlut[i][j] = j == width - 1 ? -1 : 1;
             }
         }
 
