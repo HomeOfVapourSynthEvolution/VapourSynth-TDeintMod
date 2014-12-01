@@ -61,7 +61,7 @@ compensated means adjusted for distance differences due to field vs frames and c
 
 ---
 
-        tdm.IsCombed(clip clip[, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, int metric=0])
+    tdm.IsCombed(clip clip[, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, int metric=0])
 
 - cthresh: Area combing threshold used for combed frame detection. It is like dthresh or dthreshold in telecide() and fielddeinterlace(). This essentially controls how "strong" or "visible" combing must be to be detected. Good values are from 6 to 12. If you know your source has a lot of combed frames set this towards the low end (6-7). If you know your source has very few combed frames set this higher (10-12). Going much lower than 5 to 6 or much higher than 12 is not recommended.
 
