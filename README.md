@@ -13,9 +13,10 @@ Usage
 
     tdm.TDeintMod(clip clip, int order[, int field=order, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, bint show=False, clip edeint])
 
-- order: Sets the field order of the video.  
-    0 = bottom field first (bff)
-    1 = top field first (tff)
+- order: Sets the field order of the video.<br />
+<br />
+0 = bottom field first (bff)<br />
+1 = top field first (tff)
 
 - field: When in mode 0, this sets the field to be interpolated. When in mode 1, this setting does nothing.<br />
 <br />
@@ -58,8 +59,9 @@ compensated means adjusted for distance differences due to field vs frames and c
 
 - edeint: Allows the specification of an external clip from which to take interpolated pixels instead of having TDeintMod use its internal interpolation method. If a clip is specified, then TDeintMod will process everything as usual except that instead of computing interpolated pixels itself it will take the needed pixels from the corresponding spatial positions in the same frame of the edeint clip. To disable the use of an edeint clip simply don't specify a value for edeint.
 
+---
 
-    tdm.IsCombed(clip clip[, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, int metric=0])
+        tdm.IsCombed(clip clip[, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, int metric=0])
 
 - cthresh: Area combing threshold used for combed frame detection. It is like dthresh or dthreshold in telecide() and fielddeinterlace(). This essentially controls how "strong" or "visible" combing must be to be detected. Good values are from 6 to 12. If you know your source has a lot of combed frames set this towards the low end (6-7). If you know your source has very few combed frames set this higher (10-12). Going much lower than 5 to 6 or much higher than 12 is not recommended.
 
