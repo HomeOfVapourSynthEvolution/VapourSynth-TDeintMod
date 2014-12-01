@@ -2064,8 +2064,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegiste
     registerFunc("TDeintMod",
                  "clip:clip;order:int;field:int:opt;mode:int:opt;"
                  "length:int:opt;mtype:int:opt;ttype:int:opt;mtql:int:opt;mthl:int:opt;mtqc:int:opt;mthc:int:opt;nt:int:opt;minthresh:int:opt;maxthresh:int:opt;cstr:int:opt;show:int:opt;"
-                 "clip2:clip:opt;edeint:clip:opt;",
+                 "edeint:clip:opt;",
                  tdeintmodCreate, nullptr, plugin);
-    registerFunc("IsCombed",
-                 "clip:clip;cthresh:int:opt;blockx:int:opt;blocky:int:opt;chroma:int:opt;mi:int:opt;metric:int:opt;", iscombedCreate, nullptr, plugin);
+    registerFunc("IsCombed", "clip:clip;cthresh:int:opt;blockx:int:opt;blocky:int:opt;chroma:int:opt;mi:int:opt;metric:int:opt;", iscombedCreate, nullptr, plugin);
 }
