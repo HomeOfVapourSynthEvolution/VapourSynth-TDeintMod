@@ -1857,10 +1857,10 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
         if (d->mask)
             vsapi->requestFrameFilter(nSaved, d->mask, frameCtx);
 
+        vsapi->requestFrameFilter(n, d->node, frameCtx);
         if (!d->show) {
             if (n > 0)
                 vsapi->requestFrameFilter(n - 1, d->node, frameCtx);
-            vsapi->requestFrameFilter(n, d->node, frameCtx);
             if (n < d->viSaved->numFrames - 1)
                 vsapi->requestFrameFilter(n + 1, d->node, frameCtx);
             if (d->edeint)
