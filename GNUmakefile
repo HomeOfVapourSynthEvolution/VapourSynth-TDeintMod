@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------------
-#  Makefile for VapourSynth-TDeintMod, modified based on d2vsource/GNUmakefile
+#  Makefile for VapourSynth-TDeintMod
 #----------------------------------------------------------------------------
 
 include config.mak
