@@ -1043,8 +1043,9 @@ static void combineMasks(const VSFrameRef * src, VSFrameRef * dst, const TDeintM
 }
 
 template<typename T>
-static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, const int fieldt, const int ccount, const int ocount, const TDeintModData * d, const VSAPI * vsapi) {
-    const int * tmmlut = d->tmmlut16.data() + d->order * 8 + fieldt * 4;
+static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, const int ccount, const int ocount, const int order, const int field,
+                      const TDeintModData * d, const VSAPI * vsapi) {
+    const int * tmmlut = d->tmmlut16.data() + order * 8 + field * 4;
     int tmmlutf[64];
     for (int i = 0; i < 64; i++)
         tmmlutf[i] = tmmlut[d->vlut[i]];
@@ -1061,7 +1062,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
         for (int i = 0; i < ccount; i++)
             ptlut[1][i] = reinterpret_cast<T *>(vsapi->getWritePtr(csrc[i], plane));
         for (int i = 0; i < ocount; i++) {
-            if (fieldt == 1) {
+            if (field == 1) {
                 ptlut[0][i] = reinterpret_cast<T *>(vsapi->getWritePtr(osrc[i], plane));
                 ptlut[2][i] = ptlut[0][i] + stride;
             } else {
@@ -1070,7 +1071,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
         }
         T * VS_RESTRICT dstp = reinterpret_cast<T *>(vsapi->getWritePtr(dst, plane));
         if (sizeof(T) == 1) {
-            if (fieldt == 1) {
+            if (field == 1) {
                 for (int j = 0; j < height; j += 2)
                     memset(dstp + stride * j, d->ten, width);
                 dstp += stride;
@@ -1079,7 +1080,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
                     memset(dstp + stride * j, d->ten, width);
             }
         } else {
-            if (fieldt == 1) {
+            if (field == 1) {
                 for (int j = 0; j < height; j += 2)
                     memset16(dstp + stride * j, d->ten, width);
                 dstp += stride;
@@ -1089,7 +1090,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
             }
         }
         const int ct = ccount / 2;
-        for (int y = fieldt; y < height; y += 2) {
+        for (int y = field; y < height; y += 2) {
             for (int x = 0; x < width; x++) {
                 if (!ptlut[1][ct - 2][x] && !ptlut[1][ct][x] && !ptlut[1][ct + 1][x]) {
                     dstp[x] = d->sixty;
@@ -1136,7 +1137,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
 }
 
 template<typename T>
-static void setMaskForUpsize(VSFrameRef * msk, const int fieldt, const TDeintModData * d, const VSAPI * vsapi) {
+static void setMaskForUpsize(VSFrameRef * msk, const int field, const TDeintModData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         const int width = vsapi->getFrameWidth(msk, plane);
         const int height = vsapi->getFrameHeight(msk, plane) / 2;
@@ -1144,7 +1145,7 @@ static void setMaskForUpsize(VSFrameRef * msk, const int fieldt, const TDeintMod
         T * VS_RESTRICT maskwc = reinterpret_cast<T *>(vsapi->getWritePtr(msk, plane));
         T * VS_RESTRICT maskwn = maskwc + stride / 2;
         if (sizeof(T) == 1) {
-            if (fieldt == 1) {
+            if (field == 1) {
                 for (int y = 0; y < height - 1; y++) {
                     memset(maskwc, d->ten, width);
                     memset(maskwn, d->sixty, width);
@@ -1164,7 +1165,7 @@ static void setMaskForUpsize(VSFrameRef * msk, const int fieldt, const TDeintMod
                 }
             }
         } else {
-            if (fieldt == 1) {
+            if (field == 1) {
                 for (int y = 0; y < height - 1; y++) {
                     memset16(maskwc, d->ten, width);
                     memset16(maskwn, d->sixty, width);
@@ -1670,20 +1671,21 @@ static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationRe
     } else if (activationReason == arAllFramesReady) {
         const VSFrameRef * src[3];
         VSFrameRef * msk[3][2];
+        for (int i = 0; i < 3; i++) {
+            src[i] = vsapi->getFrameFilter(std::min(n + i, d->vi.numFrames - 1), d->node, frameCtx);
+            msk[i][0] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
+            msk[i][1] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
+        }
         VSFrameRef * dst[] = { vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core),
-                               vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core) };
+                               vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, src[0], core) };
 
         if (d->vi.format->bitsPerSample == 8) {
-            for (int i = 0; i < 3; i++) {
-                src[i] = vsapi->getFrameFilter(std::min(n + i, d->vi.numFrames - 1), d->node, frameCtx);
-                msk[i][0] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
-                msk[i][1] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
+            for (int i = 0; i < 3; i++)
 #ifdef VS_TARGET_CPU_X86
                 threshMask<uint8_t, Vec16uc>(src[i], msk[i][0], d, vsapi);
 #else
                 threshMask<uint8_t>(src[i], msk[i][0], d, vsapi);
 #endif
-            }
             for (int i = 0; i < 2; i++)
 #ifdef VS_TARGET_CPU_X86
                 motionMask<uint8_t, Vec16uc>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
@@ -1696,16 +1698,12 @@ static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationRe
 #endif
             combineMasks<uint8_t>(dst[0], dst[1], d, vsapi);
         } else {
-            for (int i = 0; i < 3; i++) {
-                src[i] = vsapi->getFrameFilter(std::min(n + i, d->vi.numFrames - 1), d->node, frameCtx);
-                msk[i][0] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
-                msk[i][1] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
+            for (int i = 0; i < 3; i++)
 #ifdef VS_TARGET_CPU_X86
                 threshMask<uint16_t, Vec16us>(src[i], msk[i][0], d, vsapi);
 #else
                 threshMask<uint16_t>(src[i], msk[i][0], d, vsapi);
 #endif
-            }
             for (int i = 0; i < 2; i++)
 #ifdef VS_TARGET_CPU_X86
                 motionMask<uint16_t, Vec16us>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
@@ -1735,35 +1733,15 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
     const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
 
     if (activationReason == arInitial) {
-        int fieldt = d->field;
-        if (d->mode == 1) {
-            fieldt = (n & 1) ? 1 - d->order : d->order;
+        if (d->mode == 1)
             n /= 2;
-        }
 
-        int tstart, tstop, bstart, bstop;
-        if (fieldt == 1) {
-            tstart = n - (d->length - 1) / 2;
-            tstop = n + (d->length - 1) / 2 - 2;
-            const int bn = d->order == 1 ? n - 1 : n;
-            bstart = bn - (d->length - 2) / 2;
-            bstop = bn + 1 + (d->length - 2) / 2 - 2;
-        } else {
-            const int tn = d->order == 0 ? n - 1 : n;
-            tstart = tn - (d->length - 2) / 2;
-            tstop = tn + 1 + (d->length - 2) / 2 - 2;
-            bstart = n - (d->length - 1) / 2;
-            bstop = n + (d->length - 1) / 2 - 2;
-        }
-
-        for (int i = tstart; i <= tstop; i++) {
-            if (i >= 0 && i < d->viSaved->numFrames - 2)
-                vsapi->requestFrameFilter(i, d->node, frameCtx);
-        }
-        for (int i = bstart; i <= bstop; i++) {
-            if (i >= 0 && i < d->viSaved->numFrames - 2)
-                vsapi->requestFrameFilter(i, d->node2, frameCtx);
-        }
+        const int start = std::max(n - 1 - (d->length - 2) / 2, 0);
+        const int stop = std::min(n + 1 + (d->length - 2) / 2 - 2, d->viSaved->numFrames - 3);
+        for (int i = start; i <= stop; i++)
+            vsapi->requestFrameFilter(i, d->node, frameCtx);
+        for (int i = start; i <= stop; i++)
+            vsapi->requestFrameFilter(i, d->node2, frameCtx);
     } else if (activationReason == arAllFramesReady) {
         // In the original version, it's dynamically allocated to the size of (length - 2) and length doesn't have an upper limit
         // Since I set the upper limit of length to 30 in VS port now, I just declare the array to the maximum possible size instead of using dynamic memory allocation
@@ -1771,18 +1749,32 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
         VSFrameRef * srcb[28];
         VSFrameRef * dst = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core);
 
-        int fieldt = d->field;
-        if (d->mode == 1) {
-            fieldt = (n & 1) ? 1 - d->order : d->order;
+        const int nSaved = n;
+        if (d->mode == 1)
             n /= 2;
-        }
+
+        int err;
+        const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const int fieldBased = int64ToIntS(vsapi->propGetInt(vsapi->getFramePropsRO(src), "_FieldBased", 0, &err));
+        vsapi->freeFrame(src);
+        int effectiveOrder = d->order;
+        if (fieldBased == 1)
+            effectiveOrder = 0;
+        else if (fieldBased == 2)
+            effectiveOrder = 1;
+
+        int fieldt;
+        if (d->mode == 1)
+            fieldt = (nSaved & 1) ? 1 - effectiveOrder : effectiveOrder;
+        else
+            fieldt = (d->field == -1) ? effectiveOrder : d->field;
 
         int tstart, tstop, bstart, bstop, ccount, ocount;
         VSFrameRef ** csrc, ** osrc;
         if (fieldt == 1) {
             tstart = n - (d->length - 1) / 2;
             tstop = n + (d->length - 1) / 2 - 2;
-            const int bn = (d->order == 1) ? n - 1 : n;
+            const int bn = (effectiveOrder == 1) ? n - 1 : n;
             bstart = bn - (d->length - 2) / 2;
             bstop = bn + 1 + (d->length - 2) / 2 - 2;
             ocount = tstop - tstart + 1;
@@ -1790,7 +1782,7 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
             osrc = srct;
             csrc = srcb;
         } else {
-            const int tn = (d->order == 0) ? n - 1 : n;
+            const int tn = (effectiveOrder == 0) ? n - 1 : n;
             tstart = tn - (d->length - 2) / 2;
             tstop = tn + 1 + (d->length - 2) / 2 - 2;
             bstart = n - (d->length - 1) / 2;
@@ -1825,9 +1817,9 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
         }
 
         if (d->vi.format->bitsPerSample == 8)
-            buildMask<uint8_t>(csrc, osrc, dst, fieldt, ccount, ocount, d, vsapi);
+            buildMask<uint8_t>(csrc, osrc, dst, ccount, ocount, effectiveOrder, fieldt, d, vsapi);
         else
-            buildMask<uint16_t>(csrc, osrc, dst, fieldt, ccount, ocount, d, vsapi);
+            buildMask<uint16_t>(csrc, osrc, dst, ccount, ocount, effectiveOrder, fieldt, d, vsapi);
 
         for (int i = tstart; i <= tstop; i++)
             vsapi->freeFrame(srct[i - tstart]);
@@ -1861,11 +1853,24 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
         }
     } else if (activationReason == arAllFramesReady) {
         const int nSaved = n;
-        int fieldt = d->field;
-        if (d->mode == 1) {
-            fieldt = (n & 1) ? 1 - d->order : d->order;
+        if (d->mode == 1)
             n /= 2;
-        }
+
+        const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
+
+        int err;
+        const int fieldBased = int64ToIntS(vsapi->propGetInt(vsapi->getFramePropsRO(src), "_FieldBased", 0, &err));
+        int effectiveOrder = d->order;
+        if (fieldBased == 1)
+            effectiveOrder = 0;
+        else if (fieldBased == 2)
+            effectiveOrder = 1;
+
+        int fieldt;
+        if (d->mode == 1)
+            fieldt = (nSaved & 1) ? 1 - effectiveOrder : effectiveOrder;
+        else
+            fieldt = (d->field == -1) ? effectiveOrder : d->field;
 
         VSFrameRef * mask;
         if (d->mask) {
@@ -1879,11 +1884,12 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
             else
                 setMaskForUpsize<uint16_t>(mask, fieldt, d, vsapi);
         }
-        if (d->show)
+        if (d->show) {
+            vsapi->freeFrame(src);
             return mask;
+        }
 
         const VSFrameRef * prv = vsapi->getFrameFilter(std::max(n - 1, 0), d->node, frameCtx);
-        const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
         const VSFrameRef * nxt = vsapi->getFrameFilter(std::min(n + 1, d->viSaved->numFrames - 1), d->node, frameCtx);
         VSFrameRef * dst = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, src, core);
 
@@ -1899,6 +1905,18 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
                 cubicDeint<uint8_t>(dst, mask, prv, src, nxt, d, vsapi);
             else
                 cubicDeint<uint16_t>(dst, mask, prv, src, nxt, d, vsapi);
+        }
+
+        if (d->mode == 1) {
+            VSMap * props = vsapi->getFramePropsRW(dst);
+            int errNum, errDen;
+            int64_t durationNum = vsapi->propGetInt(props, "_DurationNum", 0, &errNum);
+            int64_t durationDen = vsapi->propGetInt(props, "_DurationDen", 0, &errDen);
+            if (!errNum && !errDen) {
+                muldivRational(&durationNum, &durationDen, 1, 2);
+                vsapi->propSetInt(props, "_DurationNum", durationNum, paReplace);
+                vsapi->propSetInt(props, "_DurationDen", durationDen, paReplace);
+            }
         }
 
         vsapi->freeFrame(mask);
@@ -1975,7 +1993,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
     d.order = !!vsapi->propGetInt(in, "order", 0, nullptr);
     d.field = !!vsapi->propGetInt(in, "field", 0, &err);
     if (err)
-        d.field = d.order;
+        d.field = -1;
     d.mode = !!vsapi->propGetInt(in, "mode", 0, &err);
     d.length = int64ToIntS(vsapi->propGetInt(in, "length", 0, &err));
     if (err)
