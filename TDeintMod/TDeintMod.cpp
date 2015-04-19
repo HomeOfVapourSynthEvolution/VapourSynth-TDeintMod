@@ -43,7 +43,7 @@
 #endif
 
 struct TDeintModData {
-    VSNodeRef * node, * node2, * mask, * edeint;
+    VSNodeRef * node, * node2, * propNode, * mask, * edeint;
     VSVideoInfo vi;
     const VSVideoInfo * viSaved;
     int order, field, mode, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr;
@@ -1660,6 +1660,22 @@ static void VS_CC iscombedInit(VSMap *in, VSMap *out, void **instanceData, VSNod
     vsapi->setVideoInfo(d->vi, 1, node);
 }
 
+static const VSFrameRef *VS_CC tdeintmodAssumeTFFGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
+
+    if (activationReason == arInitial) {
+        vsapi->requestFrameFilter(n, d->node, frameCtx);
+    } else if (activationReason == arAllFramesReady) {
+        const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        VSFrameRef * dst = vsapi->copyFrame(src, core);
+        vsapi->propSetInt(vsapi->getFramePropsRW(dst), "_FieldBased", 2, paReplace);
+        vsapi->freeFrame(src);
+        return dst;
+    }
+
+    return nullptr;
+}
+
 static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
     const TDeintModData * d = static_cast<const TDeintModData *>(*instanceData);
 
@@ -1677,7 +1693,7 @@ static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationRe
             msk[i][1] = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core);
         }
         VSFrameRef * dst[] = { vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core),
-                               vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, src[0], core) };
+                               vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core) };
 
         if (d->vi.format->bitsPerSample == 8) {
             for (int i = 0; i < 3; i++)
@@ -1736,6 +1752,8 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
         if (d->mode == 1)
             n /= 2;
 
+        vsapi->requestFrameFilter(n, d->propNode, frameCtx);
+
         const int start = std::max(n - 1 - (d->length - 2) / 2, 0);
         const int stop = std::min(n + 1 + (d->length - 2) / 2 - 2, d->viSaved->numFrames - 3);
         for (int i = start; i <= stop; i++)
@@ -1754,7 +1772,7 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
             n /= 2;
 
         int err;
-        const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrameRef * src = vsapi->getFrameFilter(n, d->propNode, frameCtx);
         const int fieldBased = int64ToIntS(vsapi->propGetInt(vsapi->getFramePropsRO(src), "_FieldBased", 0, &err));
         vsapi->freeFrame(src);
         int effectiveOrder = d->order;
@@ -1969,6 +1987,7 @@ static void VS_CC tdeintmodBuildMMFree(void *instanceData, VSCore *core, const V
     TDeintModData * d = static_cast<TDeintModData *>(instanceData);
     vsapi->freeNode(d->node);
     vsapi->freeNode(d->node2);
+    vsapi->freeNode(d->propNode);
     delete d;
 }
 
@@ -2108,6 +2127,12 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
 
     d.mask = nullptr;
     if (d.mtqL > -2 || d.mthL > -2 || d.mtqC > -2 || d.mthC > -2) {
+        TDeintModData * data = new TDeintModData(d);
+
+        vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodAssumeTFFGetFrame, tdeintmodCreateMMFree, fmParallel, nfNoCache, data, core);
+        d.node = vsapi->propGetNode(out, "clip", 0, nullptr);
+        vsapi->clearMap(out);
+
         VSMap * args = vsapi->createMap();
         VSPlugin * stdPlugin = vsapi->getPluginById("com.vapoursynth.std", core);
 
@@ -2141,7 +2166,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         vsapi->clearMap(args);
         vsapi->freeMap(ret);
 
-        TDeintModData * data = new TDeintModData(d);
+        data = new TDeintModData(d);
 
         vsapi->createFilter(in, out, "TDeintMod", tdeintmodInit, tdeintmodCreateMMGetFrame, tdeintmodCreateMMFree, fmParallel, 0, data, core);
         VSNodeRef * temp = vsapi->propGetNode(out, "clip", 0, nullptr);
@@ -2175,6 +2200,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
             return;
 
         d.node = temp;
+        d.propNode = vsapi->propGetNode(in, "clip", 0, nullptr);
         d.vi = *vsapi->getVideoInfo(d.node);
         d.viSaved = vsapi->getVideoInfo(d.node);
 
