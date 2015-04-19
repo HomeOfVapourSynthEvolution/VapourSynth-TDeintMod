@@ -900,9 +900,9 @@ static void motionMask(const VSFrameRef * src1, const VSFrameRef * msk1, const V
                 const T2 mskp2h = T2().load_a(mskp2h_ + x);
                 const T2 diff = abs_dif<T2>(srcp1, srcp2);
                 const T2 threshq = min(mskp1q, mskp2q);
-                select(diff <= min(max(threshq + nt, minthresh), maxthresh), peak, zero).store_a(dstpq + x);
+                select(diff <= min(max(add_saturated(threshq, nt), minthresh), maxthresh), peak, zero).store_a(dstpq + x);
                 const T2 threshh = min(mskp1h, mskp2h);
-                select(diff <= min(max(threshh + nt, minthresh), maxthresh), peak, zero).store_a(dstph + x);
+                select(diff <= min(max(add_saturated(threshh, nt), minthresh), maxthresh), peak, zero).store_a(dstph + x);
             }
             srcp1_ += stride;
             srcp2_ += stride;
@@ -935,9 +935,9 @@ static void motionMask(const VSFrameRef * src1, const VSFrameRef * msk1, const V
             for (int x = 0; x < width; x++) {
                 const int diff = std::abs(srcp1[x] - srcp2[x]);
                 const int threshq = std::min(mskp1q[x], mskp2q[x]);
-                dstpq[x] = diff <= std::min(std::max(threshq + d->nt, d->minthresh), d->maxthresh) ? peak : 0;
+                dstpq[x] = (diff <= std::min(std::max(threshq + d->nt, d->minthresh), d->maxthresh)) ? peak : 0;
                 const int threshh = std::min(mskp1h[x], mskp2h[x]);
-                dstph[x] = diff <= std::min(std::max(threshh + d->nt, d->minthresh), d->maxthresh) ? peak : 0;
+                dstph[x] = (diff <= std::min(std::max(threshh + d->nt, d->minthresh), d->maxthresh)) ? peak : 0;
             }
             srcp1 += stride;
             srcp2 += stride;
