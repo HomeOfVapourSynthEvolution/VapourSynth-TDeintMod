@@ -25,7 +25,7 @@ Usage
   * 0 = same rate output
   * 1 = double rate output (bobbing)
 
-* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved. Allowed values are between 6 and 30 inclusive.
+* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved. Must be between 6 and 30 inclusive.
 
 * mtype: Sets whether or not both vertical neighboring lines in the current field of the line in the opposite parity field attempting to be weaved have to agree on both stationarity and direction.
   * 0 = no
@@ -46,7 +46,7 @@ Usage
 
 * mtql/mthl/mtqc/mthc: These parameters allow the specification of hard thresholds instead of using per-pixel adaptive motion thresholds. mtqL sets the quarter pel threshold for luma, mthL sets the half pel threshold for luma, mtqC/mthC are the same but for chroma. Setting all four parameters to -2 will disable motion adaptation (i.e. every pixel will be declared moving) allowing for a dumb bob. If these parameters are set to -1 then an adaptive threshold is used. Otherwise, if they are between 0 and 255 (inclusive) then the value of the parameter is used as the threshold for every pixel.
 
-* nt/minthresh/maxthresh: nt sets the noise threshold, which will be added to the value of each per-pixel threshold when determining if a pixel is stationary or not. After the addition of 'nt', any threshold less than minthresh will be increased to minthresh and any threshold greater than maxthresh will be decreased to maxthresh.
+* nt/minthresh/maxthresh: nt sets the noise threshold, which will be added to the value of each per-pixel threshold when determining if a pixel is stationary or not. After the addition of 'nt', any threshold less than minthresh will be increased to minthresh and any threshold greater than maxthresh will be decreased to maxthresh. Must be between 0 and 255 inclusive.
 
 * cstr: Sets the number of required neighbor pixels (3x3 neighborhood) in the quarter pel mask, of a pixel marked as moving in the quarter pel mask, but stationary in the half pel mask, marked as stationary for the pixel to be marked as stationary in the combined mask.
 
