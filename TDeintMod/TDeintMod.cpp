@@ -2077,6 +2077,10 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         vsapi->setError(out, "TDeintMod: mthc must be between -2 and 255 inclusive");
         return;
     }
+    if (d.nt < 0 || d.nt > 255) {
+        vsapi->setError(out, "TDeintMod: nt must be between 0 and 255 inclusive");
+        return;
+    }
     if (d.minthresh < 0 || d.minthresh > 255) {
         vsapi->setError(out, "TDeintMod: minthresh must be between 0 and 255 inclusive");
         return;
