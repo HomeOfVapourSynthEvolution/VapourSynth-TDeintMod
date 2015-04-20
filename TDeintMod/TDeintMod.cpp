@@ -1756,10 +1756,10 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
 
         const int start = std::max(n - 1 - (d->length - 2) / 2, 0);
         const int stop = std::min(n + 1 + (d->length - 2) / 2 - 2, d->viSaved->numFrames - 3);
-        for (int i = start; i <= stop; i++)
+        for (int i = start; i <= stop; i++) {
             vsapi->requestFrameFilter(i, d->node, frameCtx);
-        for (int i = start; i <= stop; i++)
             vsapi->requestFrameFilter(i, d->node2, frameCtx);
+        }
     } else if (activationReason == arAllFramesReady) {
         // In the original version, it's dynamically allocated to the size of (length - 2) and length doesn't have an upper limit
         // Since I set the upper limit of length to 30 in VS port now, I just declare the array to the maximum possible size instead of using dynamic memory allocation
@@ -2271,6 +2271,14 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
     d.viSaved = vsapi->getVideoInfo(d.node);
 
     if (d.mode == 1) {
+        if (d.vi.numFrames > INT_MAX / 2) {
+            vsapi->setError(out, "TDeintMod: resulting clip is too long");
+            vsapi->freeNode(d.node);
+            vsapi->freeNode(d.mask);
+            vsapi->freeNode(d.edeint);
+            return;
+        }
+
         d.vi.numFrames *= 2;
         d.vi.fpsNum *= 2;
     }
