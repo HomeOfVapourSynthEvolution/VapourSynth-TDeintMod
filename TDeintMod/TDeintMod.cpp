@@ -1695,43 +1695,43 @@ static const VSFrameRef *VS_CC tdeintmodCreateMMGetFrame(int n, int activationRe
         VSFrameRef * dst[] = { vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height * 2, nullptr, core),
                                vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core) };
 
+#ifdef VS_TARGET_CPU_X86
         if (d->vi.format->bitsPerSample == 8) {
             for (int i = 0; i < 3; i++)
-#ifdef VS_TARGET_CPU_X86
                 threshMask<uint8_t, Vec16uc>(src[i], msk[i][0], d, vsapi);
-#else
-                threshMask<uint8_t>(src[i], msk[i][0], d, vsapi);
-#endif
             for (int i = 0; i < 2; i++)
-#ifdef VS_TARGET_CPU_X86
                 motionMask<uint8_t, Vec16uc>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
             motionMask<uint8_t, Vec16uc>(src[0], msk[0][0], src[2], msk[2][0], dst[0], d, vsapi);
             andMasks<uint8_t, Vec16uc>(msk[0][1], msk[1][1], dst[0], d, vsapi);
-#else
-                motionMask<uint8_t>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
-            motionMask<uint8_t>(src[0], msk[0][0], src[2], msk[2][0], dst[0], d, vsapi);
-            andMasks<uint8_t>(msk[0][1], msk[1][1], dst[0], d, vsapi);
-#endif
             combineMasks<uint8_t>(dst[0], dst[1], d, vsapi);
         } else {
             for (int i = 0; i < 3; i++)
-#ifdef VS_TARGET_CPU_X86
                 threshMask<uint16_t, Vec16us>(src[i], msk[i][0], d, vsapi);
-#else
-                threshMask<uint16_t>(src[i], msk[i][0], d, vsapi);
-#endif
             for (int i = 0; i < 2; i++)
-#ifdef VS_TARGET_CPU_X86
                 motionMask<uint16_t, Vec16us>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
             motionMask<uint16_t, Vec16us>(src[0], msk[0][0], src[2], msk[2][0], dst[0], d, vsapi);
             andMasks<uint16_t, Vec16us>(msk[0][1], msk[1][1], dst[0], d, vsapi);
+            combineMasks<uint16_t>(dst[0], dst[1], d, vsapi);
+        }
 #else
+        if (d->vi.format->bitsPerSample == 8) {
+            for (int i = 0; i < 3; i++)
+                threshMask<uint8_t>(src[i], msk[i][0], d, vsapi);
+            for (int i = 0; i < 2; i++)
+                motionMask<uint8_t>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
+            motionMask<uint8_t>(src[0], msk[0][0], src[2], msk[2][0], dst[0], d, vsapi);
+            andMasks<uint8_t>(msk[0][1], msk[1][1], dst[0], d, vsapi);
+            combineMasks<uint8_t>(dst[0], dst[1], d, vsapi);
+        } else {
+            for (int i = 0; i < 3; i++)
+                threshMask<uint16_t>(src[i], msk[i][0], d, vsapi);
+            for (int i = 0; i < 2; i++)
                 motionMask<uint16_t>(src[i], msk[i][0], src[i + 1], msk[i + 1][0], msk[i][1], d, vsapi);
             motionMask<uint16_t>(src[0], msk[0][0], src[2], msk[2][0], dst[0], d, vsapi);
             andMasks<uint16_t>(msk[0][1], msk[1][1], dst[0], d, vsapi);
-#endif
             combineMasks<uint16_t>(dst[0], dst[1], d, vsapi);
         }
+#endif
 
         for (int i = 0; i < 3; i++) {
             vsapi->freeFrame(src[i]);
