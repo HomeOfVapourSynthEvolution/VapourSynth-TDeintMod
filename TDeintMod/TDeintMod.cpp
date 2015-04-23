@@ -85,6 +85,8 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
         const int width = vsapi->getFrameWidth(src, plane);
         const int height = vsapi->getFrameHeight(src, plane);
         const int stride = vsapi->getStride(src, plane) / sizeof(T1);
+        const int firstPart = (width < 16) ? width : 16;
+        const int regularPart = (width % 16 ? width : width - 1) & -16;
         const T1 * srcp_ = reinterpret_cast<const T1 *>(vsapi->getReadPtr(src, plane));
         T1 * dstp0 = reinterpret_cast<T1 *>(vsapi->getWritePtr(dst, plane));
         T1 * dstp1 = dstp0 + stride * height;
@@ -116,7 +118,35 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    T1 min1 = peak, max1 = 0;
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcp_[x - offp] < min1)
+                        min1 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max1)
+                        max1 = srcp_[x - offp];
+                    if (srcp_[x + offn] < min1)
+                        min1 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max1)
+                        max1 = srcp_[x + offn];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    const T1 atv = std::max((std::abs(srcp_[x] - min0) + vss) >> vs, (std::abs(srcp_[x] - max0) + vss) >> vs);
+                    const T1 ath = std::max((std::abs(srcp_[x] - min1) + hs) >> hs, (std::abs(srcp_[x] - max1) + hs) >> hs);
+                    const T1 atmax = std::max(atv, ath);
+                    dstp0[x] = (atmax + 2) >> 2;
+                    dstp1[x] = (atmax + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     T2 min1(peak), max1(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
@@ -138,9 +168,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((atmax + 2) >> 2).store_a(dstp0 + x);
                     ((atmax + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
@@ -175,7 +203,51 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    T1 min1 = peak, max1 = 0;
+                    if (srcpp_[x - offp] < min0)
+                        min0 = srcpp_[x - offp];
+                    if (srcpp_[x - offp] > max0)
+                        max0 = srcpp_[x - offp];
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcpp_[x + offn] < min0)
+                        min0 = srcpp_[x + offn];
+                    if (srcpp_[x + offn] > max0)
+                        max0 = srcpp_[x + offn];
+                    if (srcp_[x - offp] < min1)
+                        min1 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max1)
+                        max1 = srcp_[x - offp];
+                    if (srcp_[x + offn] < min1)
+                        min1 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max1)
+                        max1 = srcp_[x + offn];
+                    if (srcpn_[x - offp] < min0)
+                        min0 = srcpn_[x - offp];
+                    if (srcpn_[x - offp] > max0)
+                        max0 = srcpn_[x - offp];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    if (srcpn_[x + offn] < min0)
+                        min0 = srcpn_[x + offn];
+                    if (srcpn_[x + offn] > max0)
+                        max0 = srcpn_[x + offn];
+                    const T1 atv = std::max((std::abs(srcp_[x] - min0) + vss) >> vs, (std::abs(srcp_[x] - max0) + vss) >> vs);
+                    const T1 ath = std::max((std::abs(srcp_[x] - min1) + hs) >> hs, (std::abs(srcp_[x] - max1) + hs) >> hs);
+                    const T1 atmax = std::max(atv, ath);
+                    dstp0[x] = (atmax + 2) >> 2;
+                    dstp1[x] = (atmax + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     T2 min1(peak), max1(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
@@ -209,9 +281,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((atmax + 2) >> 2).store_a(dstp0 + x);
                     ((atmax + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
@@ -262,7 +332,32 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcp_[x - offp] < min0)
+                        min0 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max0)
+                        max0 = srcp_[x - offp];
+                    if (srcp_[x + offn] < min0)
+                        min0 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max0)
+                        max0 = srcp_[x + offn];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    const T1 at = std::max(std::abs(srcp_[x] - min0), std::abs(srcp_[x] - max0));
+                    dstp0[x] = (at + 2) >> 2;
+                    dstp1[x] = (at + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
                     const T2 srcpmp = T2().load(srcp_ + x - 1);
@@ -281,9 +376,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
@@ -315,7 +408,48 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    if (srcpp_[x - offp] < min0)
+                        min0 = srcpp_[x - offp];
+                    if (srcpp_[x - offp] > max0)
+                        max0 = srcpp_[x - offp];
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcpp_[x + offn] < min0)
+                        min0 = srcpp_[x + offn];
+                    if (srcpp_[x + offn] > max0)
+                        max0 = srcpp_[x + offn];
+                    if (srcp_[x - offp] < min0)
+                        min0 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max0)
+                        max0 = srcp_[x - offp];
+                    if (srcp_[x + offn] < min0)
+                        min0 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max0)
+                        max0 = srcp_[x + offn];
+                    if (srcpn_[x - offp] < min0)
+                        min0 = srcpn_[x - offp];
+                    if (srcpn_[x - offp] > max0)
+                        max0 = srcpn_[x - offp];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    if (srcpn_[x + offn] < min0)
+                        min0 = srcpn_[x + offn];
+                    if (srcpn_[x + offn] > max0)
+                        max0 = srcpn_[x + offn];
+                    const T1 at = std::max(std::abs(srcp_[x] - min0), std::abs(srcp_[x] - max0));
+                    dstp0[x] = (at + 2) >> 2;
+                    dstp1[x] = (at + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
                     const T2 srcpmp = T2().load(srcp_ + x - 1);
@@ -346,9 +480,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
@@ -396,7 +528,36 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcp_[x - offp] < min0)
+                        min0 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max0)
+                        max0 = srcp_[x - offp];
+                    if (srcp_[x] < min0)
+                        min0 = srcp_[x];
+                    if (srcp_[x] > max0)
+                        max0 = srcp_[x];
+                    if (srcp_[x + offn] < min0)
+                        min0 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max0)
+                        max0 = srcp_[x + offn];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    const T1 at = max0 - min0;
+                    dstp0[x] = (at + 2) >> 2;
+                    dstp1[x] = (at + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
                     const T2 srcpmp = T2().load(srcp_ + x - 1);
@@ -417,9 +578,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
@@ -455,7 +614,52 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
             for (int y = 0; y < height; y++) {
                 const T1 * srcpp_ = srcp_ - (y == 0 ? -stride : stride);
                 const T1 * srcpn_ = srcp_ + (y == height - 1 ? -stride : stride);
-                for (int x = 0; x < width; x += 16) {
+                int x;
+                for (x = 0; x < firstPart; x++) {
+                    const int offp = (x == 0) ? -1 : 1;
+                    const int offn = (x == width - 1) ? -1 : 1;
+                    T1 min0 = peak, max0 = 0;
+                    if (srcpp_[x - offp] < min0)
+                        min0 = srcpp_[x - offp];
+                    if (srcpp_[x - offp] > max0)
+                        max0 = srcpp_[x - offp];
+                    if (srcpp_[x] < min0)
+                        min0 = srcpp_[x];
+                    if (srcpp_[x] > max0)
+                        max0 = srcpp_[x];
+                    if (srcpp_[x + offn] < min0)
+                        min0 = srcpp_[x + offn];
+                    if (srcpp_[x + offn] > max0)
+                        max0 = srcpp_[x + offn];
+                    if (srcp_[x - offp] < min0)
+                        min0 = srcp_[x - offp];
+                    if (srcp_[x - offp] > max0)
+                        max0 = srcp_[x - offp];
+                    if (srcp_[x] < min0)
+                        min0 = srcp_[x];
+                    if (srcp_[x] > max0)
+                        max0 = srcp_[x];
+                    if (srcp_[x + offn] < min0)
+                        min0 = srcp_[x + offn];
+                    if (srcp_[x + offn] > max0)
+                        max0 = srcp_[x + offn];
+                    if (srcpn_[x - offp] < min0)
+                        min0 = srcpn_[x - offp];
+                    if (srcpn_[x - offp] > max0)
+                        max0 = srcpn_[x - offp];
+                    if (srcpn_[x] < min0)
+                        min0 = srcpn_[x];
+                    if (srcpn_[x] > max0)
+                        max0 = srcpn_[x];
+                    if (srcpn_[x + offn] < min0)
+                        min0 = srcpn_[x + offn];
+                    if (srcpn_[x + offn] > max0)
+                        max0 = srcpn_[x + offn];
+                    const T1 at = max0 - min0;
+                    dstp0[x] = (at + 2) >> 2;
+                    dstp1[x] = (at + 1) >> 1;
+                }
+                for (; x < regularPart; x += 16) {
                     T2 min0(peak), max0(0);
                     const T2 srcp = T2().load_a(srcp_ + x);
                     const T2 srcpmp = T2().load(srcp_ + x - 1);
@@ -488,9 +692,7 @@ static void threshMask(const VSFrameRef * src, VSFrameRef * dst, const TDeintMod
                     ((at + 2) >> 2).store_a(dstp0 + x);
                     ((at + 1) >> 1).store_a(dstp1 + x);
                 }
-                const int offx[] = { 0, width - 1 };
-                for (int i = 0; i < 2; i++) {
-                    const int x = offx[i];
+                for (; x < width; x++) {
                     const int offp = (x == 0) ? -1 : 1;
                     const int offn = (x == width - 1) ? -1 : 1;
                     T1 min0 = peak, max0 = 0;
