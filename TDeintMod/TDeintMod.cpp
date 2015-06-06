@@ -2480,9 +2480,10 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
             vsapi->freeNode(d.edeint);
             return;
         }
-
         d.vi.numFrames *= 2;
-        muldivRational(&d.vi.fpsNum, &d.vi.fpsDen, 2, 1);
+
+        if (d.vi.fpsNum && d.vi.fpsDen)
+            muldivRational(&d.vi.fpsNum, &d.vi.fpsDen, 2, 1);
     }
 
     if (d.edeint) {
