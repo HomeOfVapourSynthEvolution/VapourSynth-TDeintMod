@@ -2238,7 +2238,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
     d.show = !!vsapi->propGetInt(in, "show", 0, &err);
 
     if (d.length < 6 || d.length > 30) {
-        vsapi->setError(out, "TDeintMod: length must be between 6 and 30 inclusive");
+        vsapi->setError(out, "TDeintMod: length must be between 6 and 30 (inclusive)");
         return;
     }
     if (d.mtype < 0 || d.mtype > 2) {
@@ -2250,31 +2250,31 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         return;
     }
     if (d.mtqL < -2 || d.mtqL > 255) {
-        vsapi->setError(out, "TDeintMod: mtql must be between -2 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: mtql must be between -2 and 255 (inclusive)");
         return;
     }
     if (d.mthL < -2 || d.mthL > 255) {
-        vsapi->setError(out, "TDeintMod: mthl must be between -2 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: mthl must be between -2 and 255 (inclusive)");
         return;
     }
     if (d.mtqC < -2 || d.mtqC > 255) {
-        vsapi->setError(out, "TDeintMod: mtqc must be between -2 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: mtqc must be between -2 and 255 (inclusive)");
         return;
     }
     if (d.mthC < -2 || d.mthC > 255) {
-        vsapi->setError(out, "TDeintMod: mthc must be between -2 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: mthc must be between -2 and 255 (inclusive)");
         return;
     }
     if (d.nt < 0 || d.nt > 255) {
-        vsapi->setError(out, "TDeintMod: nt must be between 0 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: nt must be between 0 and 255 (inclusive)");
         return;
     }
     if (d.minthresh < 0 || d.minthresh > 255) {
-        vsapi->setError(out, "TDeintMod: minthresh must be between 0 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: minthresh must be between 0 and 255 (inclusive)");
         return;
     }
     if (d.maxthresh < 0 || d.maxthresh > 255) {
-        vsapi->setError(out, "TDeintMod: maxthresh must be between 0 and 255 inclusive");
+        vsapi->setError(out, "TDeintMod: maxthresh must be between 0 and 255 (inclusive)");
         return;
     }
 
