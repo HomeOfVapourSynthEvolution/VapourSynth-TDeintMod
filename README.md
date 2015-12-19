@@ -18,7 +18,7 @@ Usage
   * 1 = top field first (tff)
 
 * field: When in mode 0, this sets the field to be interpolated. When in mode 1, this setting does nothing.
-  * -1 = will set field equal to order
+  * -1 = set field equal to order
   * 0 = interpolate top field (keep bottom field)
   * 1 = interpolate bottom field (keep top field)
 
