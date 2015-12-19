@@ -2197,11 +2197,11 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
     TDeintModData d;
     int err;
 
-    d.order = !!vsapi->propGetInt(in, "order", 0, nullptr);
-    d.field = !!vsapi->propGetInt(in, "field", 0, &err);
+    d.order = int64ToIntS(vsapi->propGetInt(in, "order", 0, nullptr));
+    d.field = int64ToIntS(vsapi->propGetInt(in, "field", 0, &err));
     if (err)
         d.field = -1;
-    d.mode = !!vsapi->propGetInt(in, "mode", 0, &err);
+    d.mode = int64ToIntS(vsapi->propGetInt(in, "mode", 0, &err));
     d.length = int64ToIntS(vsapi->propGetInt(in, "length", 0, &err));
     if (err)
         d.length = 10;
@@ -2237,6 +2237,18 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         d.cstr = 4;
     d.show = !!vsapi->propGetInt(in, "show", 0, &err);
 
+    if (d.order < 0 || d.order > 1) {
+        vsapi->setError(out, "TDeintMod: order must be 0 or 1");
+        return;
+    }
+    if (d.field < -1 || d.field > 1) {
+        vsapi->setError(out, "TDeintMod: field must be -1, 0 or 1");
+        return;
+    }
+    if (d.mode < 0 || d.mode > 1) {
+        vsapi->setError(out, "TDeintMod: mode must be 0 or 1");
+        return;
+    }
     if (d.length < 6 || d.length > 30) {
         vsapi->setError(out, "TDeintMod: length must be between 6 and 30 (inclusive)");
         return;
@@ -2521,7 +2533,7 @@ static void VS_CC iscombedCreate(const VSMap *in, VSMap *out, void *userData, VS
     d.MI = int64ToIntS(vsapi->propGetInt(in, "mi", 0, &err));
     if (err)
         d.MI = 64;
-    d.metric = !!vsapi->propGetInt(in, "metric", 0, &err);
+    d.metric = int64ToIntS(vsapi->propGetInt(in, "metric", 0, &err));
 
     if (d.blockx < 4 || d.blockx > 2048 || !isPowerOf2(d.blockx)) {
         vsapi->setError(out, "IsCombed: illegal blockx size");
@@ -2529,6 +2541,10 @@ static void VS_CC iscombedCreate(const VSMap *in, VSMap *out, void *userData, VS
     }
     if (d.blocky < 4 || d.blocky > 2048 || !isPowerOf2(d.blocky)) {
         vsapi->setError(out, "IsCombed: illegal blocky size");
+        return;
+    }
+    if (d.metric < 0 || d.metric > 1) {
+        vsapi->setError(out, "IsCombed: metric must be 0 or 1");
         return;
     }
 
