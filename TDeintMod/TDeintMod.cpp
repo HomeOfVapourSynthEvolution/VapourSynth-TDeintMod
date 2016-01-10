@@ -1754,8 +1754,10 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
                 cubicDeint<uint16_t>(dst, mask, prv, src, nxt, d, vsapi);
         }
 
+        VSMap * props = vsapi->getFramePropsRW(dst);
+        vsapi->propSetInt(props, "_FieldBased", 0, paReplace);
+
         if (d->mode == 1) {
-            VSMap * props = vsapi->getFramePropsRW(dst);
             int errNum, errDen;
             int64_t durationNum = vsapi->propGetInt(props, "_DurationNum", 0, &errNum);
             int64_t durationDen = vsapi->propGetInt(props, "_DurationDen", 0, &errDen);
