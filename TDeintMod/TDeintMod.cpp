@@ -2644,6 +2644,18 @@ static void VS_CC iscombedCreate(const VSMap *in, VSMap *out, void *userData, VS
         return;
     }
 
+    if (d.vi->format->subSamplingW > 2) {
+        vsapi->setError(out, "IsCombed: only horizontal chroma subsampling 1x-4x supported");
+        vsapi->freeNode(d.node);
+        return;
+    }
+
+    if (d.vi->format->subSamplingH > 2) {
+        vsapi->setError(out, "IsCombed: only vertical chroma subsampling 1x-4x supported");
+        vsapi->freeNode(d.node);
+        return;
+    }
+
     if (d.vi->format->colorFamily == cmGray)
         d.chroma = false;
 
