@@ -45,6 +45,13 @@
 #endif
 
 //////////////////////////////////////////
+// Shared
+
+static inline int scale(const int64_t val, const int64_t bits) {
+    return int64ToIntS(val * ((1 << bits) - 1) / 255);
+}
+
+//////////////////////////////////////////
 // TDeintMod
 
 struct TDeintModData {
@@ -1964,29 +1971,25 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         return;
     }
 
-    if (d.vi.format->bitsPerSample > 8) {
-        const int shift = d.vi.format->bitsPerSample - 8;
-        if (d.mtqL > -1)
-            d.mtqL <<= shift;
-        if (d.mthL > -1)
-            d.mthL <<= shift;
-        if (d.mtqC > -1)
-            d.mtqC <<= shift;
-        if (d.mthC > -1)
-            d.mthC <<= shift;
-        d.nt <<= shift;
-        d.minthresh <<= shift;
-        d.maxthresh <<= shift;
-    }
+    if (d.mtqL > -1)
+        d.mtqL = scale(d.mtqL, d.vi.format->bitsPerSample);
+    if (d.mthL > -1)
+        d.mthL = scale(d.mthL, d.vi.format->bitsPerSample);
+    if (d.mtqC > -1)
+        d.mtqC = scale(d.mtqC, d.vi.format->bitsPerSample);
+    if (d.mthC > -1)
+        d.mthC = scale(d.mthC, d.vi.format->bitsPerSample);
+    d.nt = scale(d.nt, d.vi.format->bitsPerSample);
+    d.minthresh = scale(d.minthresh, d.vi.format->bitsPerSample);
+    d.maxthresh = scale(d.maxthresh, d.vi.format->bitsPerSample);
 
-    const int shift = 16 - d.vi.format->bitsPerSample;
-    d.ten = ((10 << 8) + 10) >> shift;
-    d.twenty = ((20 << 8) + 20) >> shift;
-    d.thirty = ((30 << 8) + 30) >> shift;
-    d.forty = ((40 << 8) + 40) >> shift;
-    d.fifty = ((50 << 8) + 50) >> shift;
-    d.sixty = ((60 << 8) + 60) >> shift;
-    d.seventy = ((70 << 8) + 70) >> shift;
+    d.ten = scale(10, d.vi.format->bitsPerSample);
+    d.twenty = scale(20, d.vi.format->bitsPerSample);
+    d.thirty = scale(30, d.vi.format->bitsPerSample);
+    d.forty = scale(40, d.vi.format->bitsPerSample);
+    d.fifty = scale(50, d.vi.format->bitsPerSample);
+    d.sixty = scale(60, d.vi.format->bitsPerSample);
+    d.seventy = scale(70, d.vi.format->bitsPerSample);
 
     if (d.mtqL > -2 || d.mthL > -2 || d.mtqC > -2 || d.mthC > -2) {
         VSMap * args = vsapi->createMap();
@@ -2659,8 +2662,7 @@ static void VS_CC iscombedCreate(const VSMap *in, VSMap *out, void *userData, VS
     if (d.vi->format->colorFamily == cmGray)
         d.chroma = false;
 
-    if (d.vi->format->bitsPerSample > 8)
-        d.cthresh <<= d.vi->format->bitsPerSample - 8;
+    d.cthresh = scale(d.cthresh, d.vi->format->bitsPerSample);
 
     d.xhalf = d.blockx / 2;
     d.yhalf = d.blocky / 2;
