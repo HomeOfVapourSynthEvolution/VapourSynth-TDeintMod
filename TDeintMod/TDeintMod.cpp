@@ -60,10 +60,10 @@ struct TDeintModData {
     const VSVideoInfo * viSaved;
     int order, field, mode, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr;
     bool show;
-    int8_t gvlut[30];
-    std::vector<int8_t> vlut;
-    std::vector<int> tmmlut16;
-    int ten, twenty, thirty, forty, fifty, sixty, seventy;
+    uint8_t * gvlut;
+    std::vector<uint8_t> vlut;
+    std::vector<int16_t> tmmlut16;
+    int16_t ten, twenty, thirty, forty, fifty, sixty, seventy;
 };
 
 static inline void memset16(void * ptr, const int value, size_t num) {
@@ -1266,13 +1266,16 @@ static void combineMasks(const VSFrameRef * src, VSFrameRef * dst, const TDeintM
 template<typename T>
 static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, const int ccount, const int ocount, const int order, const int field,
                       const TDeintModData * d, const VSAPI * vsapi) {
-    const int * tmmlut = d->tmmlut16.data() + order * 8 + field * 4;
-    int tmmlutf[64];
+    const int16_t * tmmlut = d->tmmlut16.data() + order * 8 + field * 4;
+    int16_t tmmlutf[64];
     for (int i = 0; i < 64; i++)
         tmmlutf[i] = tmmlut[d->vlut[i]];
 
-    int plut[2][59]; // The size is (2 * length - 1) for the second dimension in the original version
-    T ** ptlut[3];
+    T * VS_RESTRICT plut[2];
+    for (int i = 0; i < 2; i++)
+        plut[i] = new T[2 * d->length - 1];
+
+    T * VS_RESTRICT * VS_RESTRICT ptlut[3];
     for (int i = 0; i < 3; i++)
         ptlut[i] = new T *[i & 1 ? ccount : ocount];
 
@@ -1330,7 +1333,7 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
                     plut[1][j * 2 + offo] = ptlut[2][j][x];
                 }
 
-                int val = 0;
+                uint8_t val = 0;
                 for (int i = 0; i < d->length; i++) {
                     for (int j = 0; j < d->length - 4; j++) {
                         if (!plut[0][i + j])
@@ -1362,6 +1365,8 @@ static void buildMask(VSFrameRef ** csrc, VSFrameRef ** osrc, VSFrameRef * dst, 
         }
     }
 
+    for (int i = 0; i < 2; i++)
+        delete[] plut[i];
     for (int i = 0; i < 3; i++)
         delete[] ptlut[i];
 }
@@ -1623,10 +1628,8 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
             vsapi->requestFrameFilter(i, d->node2, frameCtx);
         }
     } else if (activationReason == arAllFramesReady) {
-        // In the original version, it's dynamically allocated to the size of (length - 2) and length doesn't have an upper limit
-        // Since I set the upper limit of length to 30 in VS port now, I just declare the array to the maximum possible size instead of using dynamic memory allocation
-        VSFrameRef * srct[28];
-        VSFrameRef * srcb[28];
+        VSFrameRef ** srct = new VSFrameRef *[d->length - 2];
+        VSFrameRef ** srcb = new VSFrameRef *[d->length - 2];
         VSFrameRef * dst = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, nullptr, core);
 
         const int nSaved = n;
@@ -1705,6 +1708,8 @@ static const VSFrameRef *VS_CC tdeintmodBuildMMGetFrame(int n, int activationRea
             vsapi->freeFrame(srct[i - tstart]);
         for (int i = bstart; i <= bstop; i++)
             vsapi->freeFrame(srcb[i - bstart]);
+        delete[] srct;
+        delete[] srcb;
         return dst;
     }
 
@@ -1822,6 +1827,7 @@ static void VS_CC tdeintmodBuildMMFree(void *instanceData, VSCore *core, const V
     vsapi->freeNode(d->node);
     vsapi->freeNode(d->node2);
     vsapi->freeNode(d->propNode);
+    delete[] d->gvlut;
     delete d;
 }
 
@@ -1906,8 +1912,8 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         return;
     }
 
-    if (d.length < 6 || d.length > 30) {
-        vsapi->setError(out, "TDeintMod: length must be between 6 and 30 (inclusive)");
+    if (d.length < 6) {
+        vsapi->setError(out, "TDeintMod: length must be greater than or equal to 6");
         return;
     }
 
@@ -2082,6 +2088,7 @@ static void VS_CC tdeintmodCreate(const VSMap *in, VSMap *out, void *userData, V
         if (d.mode == 1)
             d.vi.numFrames *= 2;
 
+        d.gvlut = new uint8_t[d.length];
         for (int i = 0; i < d.length; i++)
             d.gvlut[i] = (i == 0) ? 1 : (i == d.length - 1 ? 4 : 2);
 
