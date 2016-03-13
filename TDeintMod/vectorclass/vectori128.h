@@ -1,8 +1,8 @@
 /****************************  vectori128.h   *******************************
 * Author:        Agner Fog
 * Date created:  2012-05-30
-* Last modified: 2015-11-07
-* Version:       1.19
+* Last modified: 2015-12-25
+* Version:       1.20
 * Project:       vector classes
 * Description:
 * Header file defining integer vector classes as interface to intrinsic 
@@ -643,7 +643,7 @@ static inline Vec16cb operator == (Vec16c const & a, Vec16c const & b) {
 // vector operator != : returns true for elements for which a != b
 static inline Vec16cb operator != (Vec16c const & a, Vec16c const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comneq_epi8(a,b);
+    return (Vec16cb)_mm_comneq_epi8(a,b);
 #else  // SSE2 instruction set
     return Vec16cb(Vec16c(~(a == b)));
 #endif
@@ -662,7 +662,7 @@ static inline Vec16cb operator < (Vec16c const & a, Vec16c const & b) {
 // vector operator >= : returns true for elements for which a >= b (signed)
 static inline Vec16cb operator >= (Vec16c const & a, Vec16c const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comge_epi8(a,b);
+    return (Vec16cb)_mm_comge_epi8(a,b);
 #else  // SSE2 instruction set
     return Vec16cb(Vec16c(~(b > a)));
 #endif
@@ -947,9 +947,9 @@ static inline Vec16uc & operator >>= (Vec16uc & a, int b) {
 // vector operator >= : returns true for elements for which a >= b (unsigned)
 static inline Vec16cb operator >= (Vec16uc const & a, Vec16uc const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comge_epu8(a,b);
+    return (Vec16cb)_mm_comge_epu8(a,b);
 #else  // SSE2 instruction set
-    return _mm_cmpeq_epi8(_mm_max_epu8(a,b),a); // a == max(a,b)
+    return (Vec16cb)_mm_cmpeq_epi8(_mm_max_epu8(a,b),a); // a == max(a,b)
 #endif
 }
 
@@ -961,7 +961,7 @@ static inline Vec16cb operator <= (Vec16uc const & a, Vec16uc const & b) {
 // vector operator > : returns true for elements for which a > b (unsigned)
 static inline Vec16cb operator > (Vec16uc const & a, Vec16uc const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comgt_epu8(a,b);
+    return (Vec16cb)_mm_comgt_epu8(a,b);
 #else  // SSE2 instruction set
     return Vec16cb(Vec16c(~(b >= a)));
 #endif
@@ -1433,7 +1433,7 @@ static inline Vec8sb operator == (Vec8s const & a, Vec8s const & b) {
 // vector operator != : returns true for elements for which a != b
 static inline Vec8sb operator != (Vec8s const & a, Vec8s const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comneq_epi16(a,b);
+    return (Vec8sb)_mm_comneq_epi16(a,b);
 #else  // SSE2 instruction set
     return Vec8sb (~(a == b));
 #endif
@@ -1452,7 +1452,7 @@ static inline Vec8sb operator < (Vec8s const & a, Vec8s const & b) {
 // vector operator >= : returns true for elements for which a >= b (signed)
 static inline Vec8sb operator >= (Vec8s const & a, Vec8s const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comge_epi16(a,b);
+    return (Vec8sb)_mm_comge_epi16(a,b);
 #else  // SSE2 instruction set
     return Vec8sb (~(b > a));
 #endif
@@ -1753,7 +1753,7 @@ static inline Vec8s operator <= (Vec8us const & a, Vec8us const & b) {
 // vector operator > : returns true for elements for which a > b (unsigned)
 static inline Vec8s operator > (Vec8us const & a, Vec8us const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comgt_epu16(a,b);
+    return (Vec8s)_mm_comgt_epu16(a,b);
 #else  // SSE2 instruction set
     return Vec8s (~(b >= a));
 #endif
@@ -2237,7 +2237,7 @@ static inline Vec4ib operator == (Vec4i const & a, Vec4i const & b) {
 // vector operator != : returns true for elements for which a != b
 static inline Vec4ib operator != (Vec4i const & a, Vec4i const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comneq_epi32(a,b);
+    return (Vec4ib)_mm_comneq_epi32(a,b);
 #else  // SSE2 instruction set
     return Vec4ib(Vec4i (~(a == b)));
 #endif
@@ -2256,7 +2256,7 @@ static inline Vec4ib operator < (Vec4i const & a, Vec4i const & b) {
 // vector operator >= : returns true for elements for which a >= b (signed)
 static inline Vec4ib operator >= (Vec4i const & a, Vec4i const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comge_epi32(a,b);
+    return (Vec4ib)_mm_comge_epi32(a,b);
 #else  // SSE2 instruction set
     return Vec4ib(Vec4i (~(b > a)));
 #endif
@@ -2556,12 +2556,12 @@ static inline Vec4ui operator << (Vec4ui const & a, int32_t b) {
 // vector operator > : returns true for elements for which a > b (unsigned)
 static inline Vec4ib operator > (Vec4ui const & a, Vec4ui const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comgt_epu32(a,b);
+    return (Vec4ib)_mm_comgt_epu32(a,b);
 #else  // SSE2 instruction set
     __m128i signbit = _mm_set1_epi32(0x80000000);
     __m128i a1      = _mm_xor_si128(a,signbit);
     __m128i b1      = _mm_xor_si128(b,signbit);
-    return _mm_cmpgt_epi32(a1,b1);                         // signed compare
+    return (Vec4ib)_mm_cmpgt_epi32(a1,b1);                         // signed compare
 #endif
 }
 
@@ -2573,10 +2573,10 @@ static inline Vec4ib operator < (Vec4ui const & a, Vec4ui const & b) {
 // vector operator >= : returns true for elements for which a >= b (unsigned)
 static inline Vec4ib operator >= (Vec4ui const & a, Vec4ui const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_comge_epu32(a,b);
+    return (Vec4ib)_mm_comge_epu32(a,b);
 #elif INSTRSET >= 5   // SSE4.1
     __m128i max_ab = _mm_max_epu32(a,b);                   // max(a,b), unsigned
-    return _mm_cmpeq_epi32(a,max_ab);                      // a == max(a,b)
+    return (Vec4ib)_mm_cmpeq_epi32(a,max_ab);                      // a == max(a,b)
 #else  // SSE2 instruction set
     return Vec4ib(Vec4i (~(b > a)));
 #endif
@@ -3115,7 +3115,7 @@ static inline Vec2qb operator == (Vec2q const & a, Vec2q const & b) {
 // vector operator != : returns true for elements for which a != b
 static inline Vec2qb operator != (Vec2q const & a, Vec2q const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return Vec2q(_mm_comneq_epi64(a,b));
+    return Vec2qb(_mm_comneq_epi64(a,b));
 #else  // SSE2 instruction set
     return Vec2qb(Vec2q(~(a == b)));
 #endif
@@ -3148,7 +3148,7 @@ static inline Vec2qb operator > (Vec2q const & a, Vec2q const & b) {
 // vector operator >= : returns true for elements for which a >= b (signed)
 static inline Vec2qb operator >= (Vec2q const & a, Vec2q const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return Vec2q(_mm_comge_epi64(a,b));
+    return Vec2qb(_mm_comge_epi64(a,b));
 #else  // SSE2 instruction set
     return Vec2qb(Vec2q(~(a < b)));
 #endif
@@ -3275,12 +3275,12 @@ static inline Vec2q abs_saturated(Vec2q const & a) {
 // Use negative count to rotate right
 static inline Vec2q rotate_left(Vec2q const & a, int b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return _mm_rot_epi64(a,Vec2q(b));
+    return (Vec2q)_mm_rot_epi64(a,Vec2q(b));
 #else  // SSE2 instruction set
     __m128i left  = _mm_sll_epi64(a,_mm_cvtsi32_si128(b & 0x3F));      // a << b 
     __m128i right = _mm_srl_epi64(a,_mm_cvtsi32_si128((64-b) & 0x3F)); // a >> (64 - b)
     __m128i rot   = _mm_or_si128(left,right);                          // or
-    return  rot;
+    return  (Vec2q)rot;
 #endif
 }
 
@@ -3386,7 +3386,7 @@ static inline Vec2uq operator << (Vec2uq const & a, int32_t b) {
 // vector operator > : returns true for elements for which a > b (unsigned)
 static inline Vec2qb operator > (Vec2uq const & a, Vec2uq const & b) {
 #if defined ( __XOP__ ) // AMD XOP instruction set
-    return Vec2q(_mm_comgt_epu64(a,b));
+    return Vec2qb(_mm_comgt_epu64(a,b));
 #elif INSTRSET >= 6 // SSE4.2
     __m128i sign64 = constant4i<0,(int32_t)0x80000000,0,(int32_t)0x80000000>();
     __m128i aflip  = _mm_xor_si128(a, sign64);
@@ -3415,7 +3415,7 @@ static inline Vec2qb operator < (Vec2uq const & a, Vec2uq const & b) {
 // vector operator >= : returns true for elements for which a >= b (unsigned)
 static inline Vec2qb operator >= (Vec2uq const & a, Vec2uq const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return Vec2q(_mm_comge_epu64(a,b));
+    return Vec2qb(_mm_comge_epu64(a,b));
 #else  // SSE2 instruction set
     return  Vec2qb(Vec2q(~(b > a)));
 #endif
