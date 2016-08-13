@@ -13,6 +13,8 @@ Usage
 
     tdm.TDeintMod(clip clip, int order[, int field=-1, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, bint show=False, clip edeint])
 
+* clip: Clip to process. Any planar format with integer sample type of 8-16 bit depth is supported.
+
 * order: Sets the field order of the video. The filter will use the field order specified in the source frames and will only fall back to the specified order if not present.
   * 0 = bottom field first (bff)
   * 1 = top field first (tff)
@@ -58,6 +60,8 @@ Usage
 ---
 
     tdm.IsCombed(clip clip[, int cthresh=6, int blockx=16, int blocky=16, bint chroma=False, int mi=64, int metric=0])
+
+* clip: Clip to process. Any planar format with integer sample type of 8-16 bit depth is supported.
 
 * cthresh: Area combing threshold used for combed frame detection. It is like dthresh or dthreshold in telecide() and fielddeinterlace(). This essentially controls how "strong" or "visible" combing must be to be detected. Good values are from 6 to 12. If you know your source has a lot of combed frames set this towards the low end (6-7). If you know your source has very few combed frames set this higher (10-12). Going much lower than 5 to 6 or much higher than 12 is not recommended.
 
