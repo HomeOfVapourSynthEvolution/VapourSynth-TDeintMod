@@ -1,8 +1,8 @@
 /****************************  vectorf256e.h   *******************************
 * Author:        Agner Fog
 * Date created:  2012-05-30
-* Last modified: 2015-08-25
-* Version:       1.18
+* Last modified: 2017-02-19
+* Version:       1.27
 * Project:       vector classes
 * Description:
 * Header file defining 256-bit floating point vector classes as interface
@@ -16,7 +16,7 @@
 *
 * For detailed instructions, see VectorClass.pdf
 *
-* (c) Copyright 2012 - 2015 GNU General Public License http://www.gnu.org/licenses
+* (c) Copyright 2012-2017 GNU General Public License http://www.gnu.org/licenses
 *****************************************************************************/
 
 // check combination of header files
@@ -34,6 +34,9 @@
 
 #include "vectorf128.h"  // Define 128-bit vectors
 
+#ifdef VCL_NAMESPACE
+namespace VCL_NAMESPACE {
+#endif
 
 /*****************************************************************************
 *
@@ -515,17 +518,17 @@ public:
         return *this;
     }
     // Member function to load from array (unaligned)
-    Vec8f & load(float const * p) {
-        y0 = _mm_loadu_ps(p);
-        y1 = _mm_loadu_ps(p+4);
+    Vec8f & load(void const * p) {
+        y0 = _mm_loadu_ps((float const*)p);
+        y1 = _mm_loadu_ps((float const*)p+4);
         return *this;
     }
     // Member function to load from array, aligned by 32
     // You may use load_a instead of load if you are certain that p points to an address
     // divisible by 32.
-    Vec8f & load_a(float const * p) {
-        y0 = _mm_load_ps(p);
-        y1 = _mm_load_ps(p+4);
+    Vec8f & load_a(void const * p) {
+        y0 = _mm_load_ps((float const*)p);
+        y1 = _mm_load_ps((float const*)p+4);
         return *this;
     }
     // Member function to store into array (unaligned)
@@ -539,6 +542,11 @@ public:
     void store_a(float * p) const {
         _mm_store_ps(p,   y0);
         _mm_store_ps(p+4, y1);
+    }
+    // Member function to store into array using a non-temporal memory hint, aligned by 32
+    void stream(float * p) const {
+        _mm_stream_ps(p,   y0);
+        _mm_stream_ps(p+4, y1);
     }
     // Partial load. Load n elements and set the rest to 0
     Vec8f & load_partial(int n, float const * p) {
@@ -813,6 +821,10 @@ static inline Vec8fb operator ! (Vec8f const & a) {
 *
 *****************************************************************************/
 
+static inline Vec8f zero_8f() {
+    return Vec8f(_mm_setzero_ps(), _mm_setzero_ps());
+}
+
 // Select between two operands. Corresponds to this pseudocode:
 // for (int i = 0; i < 8; i++) result[i] = s[i] ? a[i] : b[i];
 // Each byte in s must be either 0 (false) or 0xFFFFFFFF (true). No other values are allowed.
@@ -865,17 +877,17 @@ static inline Vec8f square(Vec8f const & a) {
 }
 
 // pow(Vec8f, int):
-template <typename TT> static Vec8f pow(Vec8f const & a, TT n);
+template <typename TT> static Vec8f pow(Vec8f const & a, TT const & n);
 
 // Raise floating point numbers to integer power n
 template <>
-inline Vec8f pow<int>(Vec8f const & x0, int n) {
+inline Vec8f pow<int>(Vec8f const & x0, int const & n) {
     return pow_template_i<Vec8f>(x0, n);
 }
 
 // allow conversion from unsigned int
 template <>
-inline Vec8f pow<uint32_t>(Vec8f const & x0, uint32_t n) {
+inline Vec8f pow<uint32_t>(Vec8f const & x0, uint32_t const & n) {
     return pow_template_i<Vec8f>(x0, (int)n);
 }
 
@@ -928,6 +940,12 @@ static inline Vec8i truncate_to_int(Vec8f const & a) {
 static inline Vec8f to_float(Vec8i const & a) {
     return Vec8f(to_float(a.get_low()), to_float(a.get_high()));
 }
+
+// function to_float: convert unsigned integer vector to float vector
+static inline Vec8f to_float(Vec8ui const & a) {
+    return Vec8f(to_float(a.get_low()), to_float(a.get_high()));
+}
+
 #endif // VECTORI256_H 
 
 
@@ -1457,17 +1475,17 @@ static inline Vec4d square(Vec4d const & a) {
 
 // pow(Vec4d, int):
 // Raise floating point numbers to integer power n
-template <typename TT> static Vec4d pow(Vec4d const & a, TT n);
+template <typename TT> static Vec4d pow(Vec4d const & a, TT const & n);
 
 // Raise floating point numbers to integer power n
 template <>
-inline Vec4d pow<int>(Vec4d const & x0, int n) {
+inline Vec4d pow<int>(Vec4d const & x0, int const & n) {
     return pow_template_i<Vec4d>(x0, n);
 }
 
 // allow conversion from unsigned int
 template <>
-inline Vec4d pow<uint32_t>(Vec4d const & x0, uint32_t n) {
+inline Vec4d pow<uint32_t>(Vec4d const & x0, uint32_t const & n) {
     return pow_template_i<Vec4d>(x0, (int)n);
 }
 
@@ -2017,6 +2035,66 @@ static inline Vec4d lookup(Vec4q const & index, double const * table) {
 
 /*****************************************************************************
 *
+*          Vector scatter functions
+*
+******************************************************************************
+*
+* These functions write the elements of a vector to arbitrary positions in an
+* array in memory. Each vector element is written to an array position 
+* determined by an index. An element is not written if the corresponding
+* index is out of range.
+* The indexes can be specified as constant template parameters or as an
+* integer vector.
+* 
+* The scatter functions are useful if the data are distributed in a sparce
+* manner into the array. If the array is dense then it is more efficient
+* to permute the data into the right positions and then write the whole
+* permuted vector into the array.
+*
+* Example:
+* Vec8d a(10,11,12,13,14,15,16,17);
+* double b[16] = {0};
+* scatter<0,2,14,10,1,-1,5,9>(a,b); 
+* // Now, b = {10,14,11,0,0,16,0,0,0,17,13,0,0,0,12,0}
+*
+*****************************************************************************/
+
+template <int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7>
+static inline void scatter(Vec8f const & data, float * array) {
+    const int index[8] = {i0,i1,i2,i3,i4,i5,i6,i7};
+    for (int i = 0; i < 8; i++) {
+        if (index[i] >= 0) array[index[i]] = data[i];
+    }
+}
+
+template <int i0, int i1, int i2, int i3>
+static inline void scatter(Vec4d const & data, double * array) {
+    const int index[4] = {i0,i1,i2,i3};
+    for (int i = 0; i < 4; i++) {
+        if (index[i] >= 0) array[index[i]] = data[i];
+    }
+}
+
+static inline void scatter(Vec8i const & index, uint32_t limit, Vec8f const & data, float * array) {
+    for (int i = 0; i < 8; i++) {
+        if (uint32_t(index[i]) < limit) array[index[i]] = data[i];
+    }
+}
+
+static inline void scatter(Vec4q const & index, uint32_t limit, Vec4d const & data, double * array) {
+    for (int i = 0; i < 4; i++) {
+        if (uint64_t(index[i]) < uint64_t(limit)) array[index[i]] = data[i];
+    }
+} 
+
+static inline void scatter(Vec4i const & index, uint32_t limit, Vec4d const & data, double * array) {
+    for (int i = 0; i < 4; i++) {
+        if (uint32_t(index[i]) < limit) array[index[i]] = data[i];
+    }
+} 
+
+/*****************************************************************************
+*
 *          Horizontal scan functions
 *
 *****************************************************************************/
@@ -2065,5 +2143,9 @@ static inline uint8_t to_bits(Vec4db const & x) {
 static inline Vec4db to_Vec4db(uint8_t x) {
     return Vec4db(to_Vec4qb(x));
 }
+
+#ifdef VCL_NAMESPACE
+}
+#endif
 
 #endif // VECTORF256_H
