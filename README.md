@@ -11,7 +11,7 @@ Only a few functionality of TDeint is kept in TDeintMod, either because some use
 Usage
 =====
 
-    tdm.TDeintMod(clip clip, int order[, int field=-1, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, bint show=False, clip edeint])
+    tdm.TDeintMod(clip clip, int order[, int field=-1, int mode=0, int length=10, int mtype=1, int ttype=1, int mtql=-1, int mthl=-1, int mtqc=-1, int mthc=-1, int nt=2, int minthresh=4, int maxthresh=75, int cstr=4, bint show=False, clip edeint=None, int opt=0, int[] planes])
 
 * clip: Clip to process. Any planar format with integer sample type of 8-16 bit depth is supported.
 
@@ -28,7 +28,7 @@ Usage
   * 0 = same rate output
   * 1 = double rate output (bobbing)
 
-* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved. Must be between 6 and 30 inclusive.
+* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved.
 
 * mtype: Sets whether or not both vertical neighboring lines in the current field of the line in the opposite parity field attempting to be weaved have to agree on both stationarity and direction.
   * 0 = no
@@ -47,15 +47,23 @@ Usage
   
   compensated means adjusted for distance differences due to field vs frames and chroma downsampling. The compensated versions will always result in thresholds <= to the uncompensated versions.
 
-* mtql/mthl/mtqc/mthc: These parameters allow the specification of hard thresholds instead of using per-pixel adaptive motion thresholds. mtqL sets the quarter pel threshold for luma, mthL sets the half pel threshold for luma, mtqC/mthC are the same but for chroma. Setting all four parameters to -2 will disable motion adaptation (i.e. every pixel will be declared moving) allowing for a dumb bob. If these parameters are set to -1 then an adaptive threshold is used. Otherwise, if they are between 0 and 255 (inclusive) then the value of the parameter is used as the threshold for every pixel.
+* mtql/mthl/mtqc/mthc: These parameters allow the specification of hard thresholds instead of using per-pixel adaptive motion thresholds. mtql sets the quarter pel threshold for luma, mthl sets the half pel threshold for luma, mtqc/mthc are the same but for chroma. Setting all four parameters to -2 will disable motion adaptation (i.e. every pixel will be declared moving) allowing for a dumb bob. If these parameters are set to -1 then an adaptive threshold is used. Otherwise, if they are between 0 and 255 (inclusive) then the value of the parameter is used as the threshold for every pixel.
 
-* nt/minthresh/maxthresh: nt sets the noise threshold, which will be added to the value of each per-pixel threshold when determining if a pixel is stationary or not. After the addition of 'nt', any threshold less than minthresh will be increased to minthresh and any threshold greater than maxthresh will be decreased to maxthresh. Must be between 0 and 255 inclusive.
+* nt/minthresh/maxthresh: nt sets the noise threshold, which will be added to the value of each per-pixel threshold when determining if a pixel is stationary or not. After the addition of 'nt', any threshold less than minthresh will be increased to minthresh and any threshold greater than maxthresh will be decreased to maxthresh. Must be between 0 and 255 (inclusive).
 
 * cstr: Sets the number of required neighbor pixels (3x3 neighborhood) in the quarter pel mask, of a pixel marked as moving in the quarter pel mask, but stationary in the half pel mask, marked as stationary for the pixel to be marked as stationary in the combined mask.
 
 * show: Displays the motion mask instead of the deinterlaced frame.
 
 * edeint: Allows the specification of an external clip from which to take interpolated pixels instead of having TDeintMod use its internal interpolation method. If a clip is specified, then TDeintMod will process everything as usual except that instead of computing interpolated pixels itself it will take the needed pixels from the corresponding spatial positions in the same frame of the edeint clip. To disable the use of an edeint clip simply don't specify a value for edeint.
+
+* opt: Sets which cpu optimizations to use.
+  * 0 = auto detect
+  * 1 = use c
+  * 2 = use sse2
+  * 3 = use avx2
+
+* planes: A list of the planes to process. By default all planes are processed.
 
 ---
 
@@ -120,3 +128,13 @@ clip.set_output()
 ```
 
 Note that it only makes sense to do so in same rate mode, because the output's number of frames from TDeintMod won't match those of the input in double rate mode.
+
+
+Compilation
+===========
+
+```
+./autogen.sh
+./configure
+make
+```
