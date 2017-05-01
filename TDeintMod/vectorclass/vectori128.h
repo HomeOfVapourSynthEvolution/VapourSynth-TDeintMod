@@ -1529,7 +1529,7 @@ static inline Vec8sb operator >= (Vec8s const & a, Vec8s const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
     return (Vec8sb)_mm_comge_epi16(a,b);
 #else  // SSE2 instruction set
-    return Vec8sb (~(b > a));
+    return Vec8sb(Vec8s(~(b > a)));
 #endif
 }
 
@@ -1813,7 +1813,7 @@ static inline Vec8us operator << (Vec8us const & a, int32_t b) {
 }
 
 // vector operator >= : returns true for elements for which a >= b (unsigned)
-static inline Vec8s operator >= (Vec8us const & a, Vec8us const & b) {
+static inline Vec8sb operator >= (Vec8us const & a, Vec8us const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
     return _mm_comge_epu16(a,b);
 #elif INSTRSET >= 5   // SSE4.1
@@ -1826,21 +1826,21 @@ static inline Vec8s operator >= (Vec8us const & a, Vec8us const & b) {
 }
 
 // vector operator <= : returns true for elements for which a <= b (unsigned)
-static inline Vec8s operator <= (Vec8us const & a, Vec8us const & b) {
+static inline Vec8sb operator <= (Vec8us const & a, Vec8us const & b) {
     return b >= a;
 }
 
 // vector operator > : returns true for elements for which a > b (unsigned)
-static inline Vec8s operator > (Vec8us const & a, Vec8us const & b) {
+static inline Vec8sb operator > (Vec8us const & a, Vec8us const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
     return (Vec8s)_mm_comgt_epu16(a,b);
 #else  // SSE2 instruction set
-    return Vec8s (~(b >= a));
+    return Vec8sb(Vec8s(~(b >= a)));
 #endif
 }
 
 // vector operator < : returns true for elements for which a < b (unsigned)
-static inline Vec8s operator < (Vec8us const & a, Vec8us const & b) {
+static inline Vec8sb operator < (Vec8us const & a, Vec8us const & b) {
     return b > a;
 }
 

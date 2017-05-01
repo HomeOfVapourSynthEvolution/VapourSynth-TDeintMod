@@ -18,5 +18,19 @@
     <ClCompile Include="TDeintMod.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TDeintMod_SSE2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TDeintMod_AVX2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vectorclass\instrset_detect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TDeintMod.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
