@@ -1833,7 +1833,7 @@ static inline Vec8sb operator <= (Vec8us const & a, Vec8us const & b) {
 // vector operator > : returns true for elements for which a > b (unsigned)
 static inline Vec8sb operator > (Vec8us const & a, Vec8us const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
-    return (Vec8s)_mm_comgt_epu16(a,b);
+    return (Vec8sb)_mm_comgt_epu16(a,b);
 #else  // SSE2 instruction set
     return Vec8sb(Vec8s(~(b >= a)));
 #endif
