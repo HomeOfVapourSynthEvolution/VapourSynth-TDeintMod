@@ -1,8 +1,8 @@
 /****************************  vectori128.h   *******************************
 * Author:        Agner Fog
 * Date created:  2012-05-30
-* Last modified: 2017-02-19
-* Version:       1.27
+* Last modified: 2017-05-02
+* Version:       1.28
 * Project:       vector classes
 * Description:
 * Header file defining integer vector classes as interface to intrinsic 
