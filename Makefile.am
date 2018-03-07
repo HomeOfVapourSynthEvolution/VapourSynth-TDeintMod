@@ -1,5 +1,5 @@
-warning_flags = -Wall -Wextra -Wshadow -Wno-unused-parameter
-common_cflags = -O3 -ffast-math $(MFLAGS) $(warning_flags)
+warning_flags = -Wall -Wextra -Wshadow -Wno-unused-parameter -Wno-attributes
+common_cflags = -O3 -ffast-math -fvisibility=hidden $(warning_flags) $(MFLAGS)
 AM_CXXFLAGS = -std=c++14 $(common_cflags)
 
 AM_CPPFLAGS = $(VapourSynth_CFLAGS)
@@ -20,14 +20,10 @@ libtdeintmod_la_SOURCES += TDeintMod/TDeintMod_SSE2.cpp \
                            TDeintMod/vectorclass/vectori256.h \
                            TDeintMod/vectorclass/vectori256e.h
 
-
 noinst_LTLIBRARIES = libavx2.la
 
-
 libavx2_la_SOURCES = TDeintMod/TDeintMod_AVX2.cpp
-
-libavx2_la_CXXFLAGS = $(AM_CXXFLAGS) -mfma -mavx2
-
+libavx2_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx2 -mfma
 
 libtdeintmod_la_LIBADD = libavx2.la
 endif

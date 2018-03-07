@@ -28,7 +28,7 @@ Usage
   * 0 = same rate output
   * 1 = double rate output (bobbing)
 
-* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved.
+* length: Sets the number of fields required for declaring pixels as stationary. length=6 means six fields (3 top/3 bottom), length=8 means 8 fields (4 top/4 bottom), etc... This can be any value greater than or equal to 6 (can be even or odd). A larger value for length will prevent more motion-adaptive related artifacts, but will result in fewer pixels being weaved.
 
 * mtype: Sets whether or not both vertical neighboring lines in the current field of the line in the opposite parity field attempting to be weaved have to agree on both stationarity and direction.
   * 0 = no
@@ -78,8 +78,6 @@ Usage
 * blocky: Sets the y-axis size of the window used during combed frame detection. This has to do with the size of the area in which `mi` number of pixels are required to be detected as combed for a frame to be declared combed. See the `mi` parameter description for more info. Possible values are any number that is a power of 2 starting at 4 and going to 2048 (e.g. 4, 8, 16, 32, ... 2048).
 
 * chroma: Includes chroma combing in the decision about whether a frame is combed. Only use this if you have one of those weird sources where the chroma can be temporally separated from the luma (i.e. the chroma moves but the luma doesn't in a field). Otherwise, it will just help to screw up the decision most of the time.
-  * True = include chroma combing
-  * False = don't
 
 * mi: The number of required combed pixels inside any of the `blockx` by `blocky` sized blocks on the frame for the frame to be considered combed. While `cthresh` controls how "visible" or "strong" the combing must be, this setting controls how much combing there must be in any localized area (a `blockx` by `blocky` sized window) on the frame. Min setting = 0, max setting = `blockx` x `blocky` (at which point no frames will ever be detected as combed).
 
@@ -108,15 +106,14 @@ Metric 0 is what TDeint always used previous to v1.0 RC7. Metric 1 is the combin
 Example usage of IsCombed
 =========================
 
-```
-import vapoursynth as vs
+```python
+from vapoursynth import core
 import functools
 
-core = vs.get_core()
 clip = Whatever
 
 def conditionalDeint(n, f, orig, deint):
-    if f.props._Combed:
+    if f.props['_Combed']:
         return deint
     else:
         return orig
