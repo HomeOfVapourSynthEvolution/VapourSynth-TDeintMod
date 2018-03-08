@@ -23,4 +23,14 @@ struct TDeintModData {
     std::array<uint16_t, 16> tmmlut16;
     uint16_t ten, twenty, thirty, forty, fifty, sixty, seventy;
     const VSFormat * format;
+    void (*copyPad)(const VSFrameRef *, VSFrameRef *, const int, const int, const VSAPI *);
+    void (*threshMask)(const VSFrameRef *, VSFrameRef *, const int, const TDeintModData *, const VSAPI *);
+    void (*motionMask)(const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, VSFrameRef *, const int, const TDeintModData *, const VSAPI *);
+    void (*andMasks)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, const int, const TDeintModData *, const VSAPI *);
+    void (*combineMasks)(const VSFrameRef *, VSFrameRef *, const int, const TDeintModData *, const VSAPI *);
+    void (*buildMask)(VSFrameRef **, VSFrameRef **, VSFrameRef *, const int, const int, const int, const int, const TDeintModData *, const VSAPI *);
+    void (*setMaskForUpsize)(VSFrameRef *, const int, const TDeintModData *, const VSAPI *);
+    void (*eDeint)(VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const TDeintModData *, const VSAPI *);
+    void (*cubicDeint)(VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const VSFrameRef *, const TDeintModData *, const VSAPI *);
+    void (*binaryMask)(const VSFrameRef *, VSFrameRef *, const TDeintModData *, const VSAPI *);
 };
