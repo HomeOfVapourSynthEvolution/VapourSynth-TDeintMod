@@ -668,6 +668,27 @@ static void cubicDeint(VSFrameRef * dst, const VSFrameRef * mask, const VSFrameR
     }
 }
 
+template<typename T>
+static void binaryMask(const VSFrameRef * mask, VSFrameRef * dst, const TDeintModData * d, const VSAPI * vsapi) noexcept {
+    for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
+        if (d->process[plane]) {
+            const int width = vsapi->getFrameWidth(mask, plane);
+            const int height = vsapi->getFrameHeight(mask, plane);
+            const int stride = vsapi->getStride(mask, plane) / sizeof(T);
+            const T * maskp = reinterpret_cast<const T *>(vsapi->getReadPtr(mask, plane));
+            T * VS_RESTRICT dstp = reinterpret_cast<T *>(vsapi->getWritePtr(dst, plane));
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++)
+                    dstp[x] = (maskp[x] == d->sixty) ? d->peak : 0;
+
+                maskp += stride;
+                dstp += stride;
+            }
+        }
+    }
+}
+
 static void selectFunctions(const unsigned opt) noexcept {
     threshMask<uint8_t> = threshMask_c<uint8_t>;
     threshMask<uint16_t> = threshMask_c<uint16_t>;
@@ -683,6 +704,7 @@ static void selectFunctions(const unsigned opt) noexcept {
 
 #ifdef VS_TARGET_CPU_X86
     const int iset = instrset_detect();
+
     if (opt == 3 || (opt == 0 && iset >= 8)) {
         threshMask<uint8_t> = threshMask_avx2<uint8_t, Vec32uc, 32>;
         threshMask<uint16_t> = threshMask_avx2<uint16_t, Vec16us, 16>;
@@ -886,26 +908,28 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
         if (d->mode == 1)
             n /= 2;
 
+        if (n > 0)
+            vsapi->requestFrameFilter(n - 1, d->node, frameCtx);
         vsapi->requestFrameFilter(n, d->node, frameCtx);
-        if (!d->show) {
-            if (n > 0)
-                vsapi->requestFrameFilter(n - 1, d->node, frameCtx);
-            if (n < d->viSaved->numFrames - 1)
-                vsapi->requestFrameFilter(n + 1, d->node, frameCtx);
-            if (d->edeint)
-                vsapi->requestFrameFilter(nSaved, d->edeint, frameCtx);
-        }
+        if (n < d->viSaved->numFrames - 1)
+            vsapi->requestFrameFilter(n + 1, d->node, frameCtx);
 
         if (d->mask)
             vsapi->requestFrameFilter(nSaved, d->mask, frameCtx);
+
+        if (!d->show && d->edeint)
+            vsapi->requestFrameFilter(nSaved, d->edeint, frameCtx);
     } else if (activationReason == arAllFramesReady) {
         const int nSaved = n;
         if (d->mode == 1)
             n /= 2;
 
+        const VSFrameRef * prv = vsapi->getFrameFilter(std::max(n - 1, 0), d->node, frameCtx);
         const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrameRef * nxt = vsapi->getFrameFilter(std::min(n + 1, d->viSaved->numFrames - 1), d->node, frameCtx);
         const VSFrameRef * fr[] = { d->process[0] ? nullptr : src, d->process[1] ? nullptr : src, d->process[2] ? nullptr : src };
         const int pl[] = { 0, 1, 2 };
+        VSFrameRef * mask, * dst;
 
         int err;
         const int fieldBased = int64ToIntS(vsapi->propGetInt(vsapi->getFramePropsRO(src), "_FieldBased", 0, &err));
@@ -922,7 +946,6 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
         else
             field = (d->field == -1) ? order : d->field;
 
-        VSFrameRef * mask;
         if (d->mask) {
             mask = const_cast<VSFrameRef *>(vsapi->getFrameFilter(nSaved, d->mask, frameCtx));
         } else {
@@ -932,27 +955,30 @@ static const VSFrameRef *VS_CC tdeintmodGetFrame(int n, int activationReason, vo
             else
                 setMaskForUpsize<uint16_t>(mask, field, d, vsapi);
         }
-        if (d->show) {
-            vsapi->freeFrame(src);
-            return mask;
-        }
 
-        const VSFrameRef * prv = vsapi->getFrameFilter(std::max(n - 1, 0), d->node, frameCtx);
-        const VSFrameRef * nxt = vsapi->getFrameFilter(std::min(n + 1, d->viSaved->numFrames - 1), d->node, frameCtx);
-        VSFrameRef * dst = vsapi->newVideoFrame2(d->vi.format, d->vi.width, d->vi.height, fr, pl, src, core);
+        if (!d->show) {
+            dst = vsapi->newVideoFrame2(d->vi.format, d->vi.width, d->vi.height, fr, pl, src, core);
 
-        if (d->edeint) {
-            const VSFrameRef * edeint = vsapi->getFrameFilter(nSaved, d->edeint, frameCtx);
-            if (d->vi.format->bytesPerSample == 1)
-                eDeint<uint8_t>(dst, mask, prv, src, nxt, edeint, d, vsapi);
-            else
-                eDeint<uint16_t>(dst, mask, prv, src, nxt, edeint, d, vsapi);
-            vsapi->freeFrame(edeint);
+            if (d->edeint) {
+                const VSFrameRef * edeint = vsapi->getFrameFilter(nSaved, d->edeint, frameCtx);
+                if (d->vi.format->bytesPerSample == 1)
+                    eDeint<uint8_t>(dst, mask, prv, src, nxt, edeint, d, vsapi);
+                else
+                    eDeint<uint16_t>(dst, mask, prv, src, nxt, edeint, d, vsapi);
+                vsapi->freeFrame(edeint);
+            } else {
+                if (d->vi.format->bytesPerSample == 1)
+                    cubicDeint<uint8_t>(dst, mask, prv, src, nxt, d, vsapi);
+                else
+                    cubicDeint<uint16_t>(dst, mask, prv, src, nxt, d, vsapi);
+            }
         } else {
+            dst = vsapi->newVideoFrame(d->vi.format, d->vi.width, d->vi.height, src, core);
+
             if (d->vi.format->bytesPerSample == 1)
-                cubicDeint<uint8_t>(dst, mask, prv, src, nxt, d, vsapi);
+                binaryMask<uint8_t>(mask, dst, d, vsapi);
             else
-                cubicDeint<uint16_t>(dst, mask, prv, src, nxt, d, vsapi);
+                binaryMask<uint16_t>(mask, dst, d, vsapi);
         }
 
         VSMap * props = vsapi->getFramePropsRW(dst);

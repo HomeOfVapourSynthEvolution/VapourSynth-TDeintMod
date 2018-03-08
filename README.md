@@ -53,7 +53,7 @@ Usage
 
 * cstr: Sets the number of required neighbor pixels (3x3 neighborhood) in the quarter pel mask, of a pixel marked as moving in the quarter pel mask, but stationary in the half pel mask, marked as stationary for the pixel to be marked as stationary in the combined mask.
 
-* show: Displays the motion mask instead of the deinterlaced frame.
+* show: Displays the binary comb mask instead of the deinterlaced frame.
 
 * edeint: Allows the specification of an external clip from which to take interpolated pixels instead of having TDeintMod use its internal interpolation method. If a clip is specified, then TDeintMod will process everything as usual except that instead of computing interpolated pixels itself it will take the needed pixels from the corresponding spatial positions in the same frame of the edeint clip. To disable the use of an edeint clip simply don't specify a value for edeint.
 
