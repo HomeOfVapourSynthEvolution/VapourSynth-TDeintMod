@@ -7,6 +7,7 @@ AM_CPPFLAGS = $(VapourSynth_CFLAGS)
 lib_LTLIBRARIES = libtdeintmod.la
 
 libtdeintmod_la_SOURCES = TDeintMod/TDeintMod.cpp \
+                          TDeintMod/TDeintMod.hpp \
                           TDeintMod/vectorclass/instrset.h \
                           TDeintMod/vectorclass/instrset_detect.cpp
 

@@ -1,4 +1,4 @@
-AC_INIT([TDeintMod], [8], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/issues], [TDeintMod], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/])
+AC_INIT([TDeintMod], [9], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/issues], [TDeintMod], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/])
 
 : ${CXXFLAGS=""}
 
@@ -7,9 +7,9 @@ AM_SILENT_RULES([yes])
 
 LT_INIT([disable-static win32-dll])
 
-AC_PROG_CXX
-
 AC_CANONICAL_HOST
+
+AC_PROG_CXX
 
 
 X86="false"
