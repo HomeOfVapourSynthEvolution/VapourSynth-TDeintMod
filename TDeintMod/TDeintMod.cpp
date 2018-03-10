@@ -384,9 +384,9 @@ static void combineMasks_c(const VSFrameRef * src, VSFrameRef * dst, const int p
     const T * srcp0 = reinterpret_cast<const T *>(vsapi->getReadPtr(src, 0)) + d->widthPad;
     T * VS_RESTRICT dstp = reinterpret_cast<T *>(vsapi->getWritePtr(dst, plane));
 
-    const T * srcp1 = srcp0 + srcStride * height;
     const T * srcpp0 = srcp0 + srcStride;
     const T * srcpn0 = srcpp0;
+    const T * srcp1 = srcp0 + srcStride * height;
 
     vs_bitblt(dstp, vsapi->getStride(dst, plane), srcp0, vsapi->getStride(src, 0), width * sizeof(T), height);
 
@@ -676,7 +676,7 @@ static void expandMask(VSFrameRef * mask, const int field, const TDeintModData *
             const int stride = vsapi->getStride(mask, plane) / sizeof(T) * 2;
             T * VS_RESTRICT maskp = reinterpret_cast<T *>(vsapi->getWritePtr(mask, plane)) + stride / 2 * field;
 
-            const int dis = plane ? d->expand >> d->vi.format->subSamplingW : d->expand;
+            const int dis = d->expand >> (plane ? d->vi.format->subSamplingW : 0);
 
             for (int y = field; y < height; y += 2) {
                 for (int x = 0; x < width; x++) {
@@ -741,10 +741,10 @@ static void linkMask(VSFrameRef * mask, const int field, const TDeintModData * d
                     }
                 } else {
                     if (d->vi.format->subSamplingH == 0) {
-                        if (reinterpret_cast<const uint32_t *>(maskpY)[x] == 0x3C3C3C3C)
+                        if (reinterpret_cast<const uint32_t *>(maskpY)[x] == 0x3C003C)
                             maskpU[x] = maskpV[x] = 0x3C;
                     } else {
-                        if (reinterpret_cast<const uint32_t *>(maskpY)[x] == 0x3C3C3C3C && reinterpret_cast<const uint32_t *>(maskpnY)[x] == 0x3C3C3C3C)
+                        if (reinterpret_cast<const uint32_t *>(maskpY)[x] == 0x3C003C && reinterpret_cast<const uint32_t *>(maskpnY)[x] == 0x3C003C)
                             maskpU[x] = maskpV[x] = 0x3C;
                     }
                 }

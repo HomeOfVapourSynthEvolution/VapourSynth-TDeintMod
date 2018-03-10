@@ -1,4 +1,4 @@
-AC_INIT([TDeintMod], [9], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/issues], [TDeintMod], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/])
+AC_INIT([TDeintMod], [10], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/issues], [TDeintMod], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-TDeintMod/])
 
 : ${CXXFLAGS=""}
 

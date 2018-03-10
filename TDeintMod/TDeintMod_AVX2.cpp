@@ -260,9 +260,9 @@ void combineMasks_avx2(const VSFrameRef * src, VSFrameRef * dst, const int plane
     const T1 * srcp0 = reinterpret_cast<const T1 *>(vsapi->getReadPtr(src, 0)) + d->widthPad;
     T1 * dstp = reinterpret_cast<T1 *>(vsapi->getWritePtr(dst, plane));
 
-    const T1 * srcp1 = srcp0 + srcStride * height;
     const T1 * srcpp0 = srcp0 + srcStride;
     const T1 * srcpn0 = srcpp0;
+    const T1 * srcp1 = srcp0 + srcStride * height;
 
     vs_bitblt(dstp, vsapi->getStride(dst, plane), srcp0, vsapi->getStride(src, 0), width * sizeof(T1), height);
 
