@@ -267,7 +267,7 @@ void combineMasks_sse2(const VSFrameRef * src, VSFrameRef * dst, const int plane
             const T2 count = T2().load(srcpp0 + x - 1) + T2().load_a(srcpp0 + x) + T2().load(srcpp0 + x + 1) +
                              T2().load(srcp0 + x - 1) + T2().load(srcp0 + x + 1) +
                              T2().load(srcpn0 + x - 1) + T2().load_a(srcpn0 + x) + T2().load(srcpn0 + x + 1);
-            select(T2().load_a(srcp0 + x) == zero_128b() && T2().load_a(srcp1 + x) != zero_128b() && count >= d->cstr, peak, T2().load_a(dstp + x)).stream(dstp + x);
+            select(T2().load_a(srcp0 + x) == T2(zero_128b()) && T2().load_a(srcp1 + x) != T2(zero_128b()) && count >= d->cstr, peak, T2().load_a(dstp + x)).stream(dstp + x);
         }
 
         srcpp0 = srcp0;
